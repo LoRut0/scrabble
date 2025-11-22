@@ -1,8 +1,8 @@
 .Phony: test clean
 
 test:
-	cmake -S src/userver -B src/userver/build
-	cmake --build src/userver/build
+	cmake -S src/userver -B .build
+	cmake --build .build
 
 clean:
 	rm log.log

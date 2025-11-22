@@ -12,7 +12,7 @@ find_package(
 
 add_executable(${PROJECT_NAME} 
     main.cpp
-    DiceGame.cpp
+    ScrabbleGame.cpp
     redis.cpp
     sqlite.cpp
     websocket.cpp

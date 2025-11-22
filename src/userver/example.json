@@ -1,89 +1,91 @@
 {
-"Player-req":
-{
+  "Player-req": {
     "action": [
-        "start",
-        "roll",
-        "choose",
-        "end"
+      "start",
+      "roll",
+      "choose",
+      "end"
     ],
     "dices": [
-        0, 0, 1, 0, 1
+      0,
+      0,
+      1,
+      0,
+      1
     ],
     "seq": "name_of_seq",
     "gameID": 123
-},
-"Game":
-{
+  },
+  "Game": {
     "gameID": 123,
     "state": {
-        "playerq": 0,
-        "rollnum": 0,
-        "dices": [
-            1,
-            2,
-            3,
-            4,
-            5
-        ],
-        "cur_sequences": {
-            "s1": 0,
-            "s2": 0,
-            "s3": 0,
-            "s4": 0,
-            "s5": 0,
-            "s6": 0,
-            "pair": 0,
-            "twopair": 0,
-            "bonus1": 0,
-            "3kind": 0,
-            "4kind": 0,
-            "fullhouse": 0,
-            "smstrght": 0,
-            "lrgstrght": 0,
-            "5kind": 0,
-            "chance": 0
-        },
-        "p1": {
-            "sequences": {
-                "s1": 0,
-                "s2": 0,
-                "s3": 0,
-                "s4": 0,
-                "s5": 0,
-                "s6": 0,
-                "pair": 0,
-                "twopair": 0,
-                "bonus1": 0,
-                "3kind": 0,
-                "4kind": 0,
-                "fullhouse": 0,
-                "smstrght": 0,
-                "lrgstrght": 0,
-                "5kind": 0,
-                "chance": 0
-            }
-        },
-        "p2": {
-            "sequences": {
-                "s1": 0,
-                "s2": 0,
-                "s3": 0,
-                "s4": 0,
-                "s5": 0,
-                "s6": 0,
-                "pair": 0,
-                "twopair": 0,
-                "bonus1": 0,
-                "3kind": 0,
-                "4kind": 0,
-                "fullhouse": 0,
-                "smstrght": 0,
-                "lrgstrght": 0,
-                "5kind": 0,
-                "chance": 0
-            }
+      "playerq": 0,
+      "rollnum": 0,
+      "dices": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "cur_sequences": {
+        "s1": 0,
+        "s2": 0,
+        "s3": 0,
+        "s4": 0,
+        "s5": 0,
+        "s6": 0,
+        "pair": 0,
+        "twopair": 0,
+        "bonus1": 0,
+        "3kind": 0,
+        "4kind": 0,
+        "fullhouse": 0,
+        "smstrght": 0,
+        "lrgstrght": 0,
+        "5kind": 0,
+        "chance": 0
+      },
+      "p1": {
+        "sequences": {
+          "s1": 0,
+          "s2": 0,
+          "s3": 0,
+          "s4": 0,
+          "s5": 0,
+          "s6": 0,
+          "pair": 0,
+          "twopair": 0,
+          "bonus1": 0,
+          "3kind": 0,
+          "4kind": 0,
+          "fullhouse": 0,
+          "smstrght": 0,
+          "lrgstrght": 0,
+          "5kind": 0,
+          "chance": 0
         }
+      },
+      "p2": {
+        "sequences": {
+          "s1": 0,
+          "s2": 0,
+          "s3": 0,
+          "s4": 0,
+          "s5": 0,
+          "s6": 0,
+          "pair": 0,
+          "twopair": 0,
+          "bonus1": 0,
+          "3kind": 0,
+          "4kind": 0,
+          "fullhouse": 0,
+          "smstrght": 0,
+          "lrgstrght": 0,
+          "5kind": 0,
+          "chance": 0
+        }
+      }
     }
-}
+  }
 }
