@@ -2,8 +2,13 @@
 #include <codecvt>
 #include <cstddef>
 #include <locale>
+#include <mutex>
 #include <optional>
 #include <string>
+#include <userver/components/component_base.hpp>
+#include <userver/engine/mutex.hpp>
+#include <userver/engine/shared_mutex.hpp>
+#include <userver/server/handlers/exceptions.hpp>
 
 namespace ScrabbleGame {
 
@@ -263,6 +268,7 @@ int ScrabbleGame::calculate_score_(const std::u32string& word)
 int ScrabbleGame::TryPlaceTiles(std::vector<std::vector<int>>& coordinates,
     std::vector<char32_t>& tiles)
 {
+    std::lock_guard<engine::Mutex> lock(mutex_);
     state_.score = -1;
 
     if (coordinates.size() != tiles.size())
@@ -277,6 +283,7 @@ int ScrabbleGame::TryPlaceTiles(std::vector<std::vector<int>>& coordinates,
 
 int ScrabbleGame::SubmitWord()
 {
+    std::lock_guard<engine::Mutex> lock(mutex_);
     if (state_.score == -1)
         return -1;
 
@@ -325,6 +332,12 @@ std::vector<std::u32string> ScrabbleGame::GetNewWords_(
         }
     }
     return words;
+}
+
+GameState ScrabbleGame::get_game_state()
+{
+    std::lock_guard<engine::Mutex> lock(mutex_);
+    return state_;
 }
 
 std::u32string ScrabbleGame::horizontal_check_(
@@ -400,3 +413,32 @@ void ScrabbleGame::draw()
 #endif
 
 } // namespace ScrabbleGame
+
+using namespace userver;
+
+namespace ScrabbleGame::Storage {
+
+StorageComponent::StorageComponent(const components::ComponentConfig& config, const components::ComponentContext& context)
+    : components::ComponentBase(config, context)
+    , client_(std::make_shared<Client>()) { };
+
+std::shared_ptr<Client> StorageComponent::GetStorage()
+{
+    return client_;
+}
+
+void Client::add_game(const int& id, std::shared_ptr<ScrabbleGame> new_game)
+{
+    const std::lock_guard<engine::SharedMutex> lock(shared_mutex_);
+    umap[id] = new_game;
+}
+
+std::shared_ptr<ScrabbleGame> Client::get_game(const int& id)
+{
+    const std::shared_lock<engine::SharedMutex> lock(shared_mutex_);
+    if (umap.find(id) == umap.end())
+        throw server::handlers::ClientError(server::handlers::ExternalBody { "invalid game id" });
+    return umap[id];
+}
+
+} // namespace ScrabbleGame::Storage

@@ -5,5 +5,5 @@ test:
 	cmake --build .build
 
 clean:
-	rm log.log
-	rm -rf src/userver/build
+	rm -f log.log
+	rm -rf .build

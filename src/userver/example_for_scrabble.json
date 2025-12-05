@@ -1,0 +1,83 @@
+{
+  "game_unfo_list": [
+    {
+      "game_id": 1,
+      "host_user_name": "name",
+      "num_of_users": 3
+    },
+    {
+      "game_id": 2,
+      "host_user_name": "vasya",
+      "num_of_users": 2
+    }
+  ],
+  "Player-req": {
+    "action": [
+      "start",
+      "place",
+      "change",
+      "pass",
+      "submit",
+      "end"
+    ],
+    "seq": "name_of_seq",
+    "sessionID": "sjdhfsdjhfsdhjf"
+  },
+  "Game": {
+    "letters": "ABCD",
+    "coordinates": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        0
+      ],
+      [
+        3,
+        0
+      ]
+    ]
+  },
+  "Response": {
+    "board": [
+      [
+        "column0"
+      ],
+      [
+        "column1"
+      ]
+    ],
+    "PlayersState": [
+      {
+        "score": 0,
+        "hand_letters": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "hand_score": [
+          1,
+          2,
+          2,
+          1
+        ]
+      },
+      {
+        "score": 0,
+        "hand_letters": [
+          "0",
+          "0",
+          "0",
+          "0"
+        ]
+      }
+    ]
+  }
+}

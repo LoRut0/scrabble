@@ -1,0 +1,73 @@
+#yaml
+components_manager:
+  task_processors: # Task processor is an executor for coroutine tasks
+    main-task-processor: # Make a task processor for CPU-bound coroutine tasks.
+      worker_threads: 4 # Process tasks in 4 threads.
+
+    fs-task-processor: # Make a separate task processor for filesystem bound tasks.
+      worker_threads: 4
+
+  default_task_processor: main-task-processor # Task processor in which components start.
+
+  components: # Configuring components that were registered via component_list
+    websocket-handler: # Finally! Websocket handler.
+      path: /ws # Registering handlers '/*' find files.
+      method: GET # Handle only GET requests.
+      task_processor: main-task-processor # Run it on CPU bound task processor
+      max-remote-payload: 100000
+      fragment-size: 100000
+
+    http-registration_handler: # Finally! Websocket handler.
+      path: /reg # Registering handlers '/*' find files.
+      method: GET,POST # Handle only GET requests.
+      task_processor: main-task-processor # Run it on CPU bound task processor
+
+    http-login_handler: # Finally! Websocket handler.
+      path: /login # Registering handlers '/*' find files.
+      method: GET,POST # Handle only GET requests.
+      task_processor: main-task-processor # Run it on CPU bound task processor
+
+    http-game_handler: # Finally! Websocket handler.
+      path: /game # Registering handlers '/*' find files.
+      method: GET,POST # Handle only GET requests.
+      task_processor: main-task-processor # Run it on CPU bound task processor
+
+    game_storage:
+
+    sqlitedb:
+      db-path: "/data/sql/key-json.db"
+      fs-task-processor: fs-task-processor
+
+    redisdb:
+      groups:
+        - config_name: key-json # Key to lookup in secdist configuration
+          # shoult add key-json to /etc/redis_service/secure_data.json
+          db: key-json # Name to refer to the cluster in components::Redis::GetClient()
+
+      subscribe_groups: # Array of redis clusters to work with in subscribe mode
+
+      thread_pools:
+        redis_thread_pool_size: 8
+        sentinel_thread_pool_size: 1
+
+    testsuite-support:
+
+    default-secdist-provider: # Component that loads configuration of hosts and passwords
+      config: /etc/redis_service/secure_data.json # Values are supposed to be stored in this file
+      missing-ok: true # ... but if the file is missing it is still ok
+      environment-secrets-key: SECDIST_CONFIG # ... values will be loaded from this environment value
+    # /// [Sample secdist static config]
+
+    server:
+      listener: # configuring the main listening socket...
+        port: 8080 # ...to listen on this port and...
+        task_processor: main-task-processor # ...process incoming requests on this task processor.
+
+    logging:
+      fs-task-processor: fs-task-processor
+      loggers:
+        default:
+          file_path: /media/loruto/lrdsk/MPEI/Website/scrabble_cursach/log.log
+          level: debug
+          overflow_behavior: discard # Drop logs if the system is too busy to write them down.
+
