@@ -7,6 +7,8 @@ project(userver-service CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "CMAKE_MODULE_PATH = ${CMAKE_MODULE_PATH}")
 
+add_subdirectory(utfcpp)
+
 find_package(
     userver
     COMPONENTS core redis sqlite
@@ -21,12 +23,14 @@ add_executable(${PROJECT_NAME}
     sqlite.cpp
     websocket.cpp
     http.cpp
+    Cors.cpp
 )
 target_link_libraries(${PROJECT_NAME}
     userver::core
     userver::redis
     userver::sqlite
     sodium
+    utf8cpp
 )
 
 userver_testsuite_add_simple()

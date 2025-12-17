@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Игра | Scrabble</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="game-body">
+
+<div class="top-bar">
+    <a href="profile.html">loruto</a>
+</div>
+
+<div class="game-container">
+
+    <!-- История -->
+    <div class="history-panel">
+        <h2>История ходов</h2>
+        <div class="history-list">
+            <p>loruto: КОТИК (+7)</p>
+            <p>PlayerTwo: ДОМ (+5)</p>
+        </div>
+    </div>
+
+    <!-- Поле -->
+    <div class="board-panel">
+        <h2>Поле</h2>
+        <div id="gameBoard" class="board"></div>
+
+        <div class="letters-panel">
+            <div class="letter-tile">К</div>
+            <div class="letter-tile">О</div>
+            <div class="letter-tile">Т</div>
+            <div class="letter-tile">А</div>
+            <div class="letter-tile">Р</div>
+            <div class="letter-tile">М</div>
+            <div class="letter-tile">С</div>
+        </div>
+    </div>
+
+    <!-- Игроки -->
+    <div class="players-panel">
+        <div class="players-list">
+            <div class="player-entry">loruto — 7</div>
+            <div class="player-entry">PlayerTwo — 5</div>
+        </div>
+
+        <div class="tiles-left">
+            Осталось фишек: <b>72</b>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-btn">Пас</button>
+            <button class="action-btn">Поменять</button>
+            <button class="action-btn">Отправить</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* рисуем фейковое поле 15x15 */
+const board = document.getElementById("gameBoard");
+board.style.display = "grid";
+board.style.gridTemplateColumns = "repeat(15, 1fr)";
+board.style.gridTemplateRows = "repeat(15, 1fr)";
+
+const letters = {
+    111: "К",
+    112: "О",
+    113: "Т",
+    114: "И",
+    115: "К",
+    97:  "Д",
+    127: "М",
+};
+
+for (let i = 0; i < 225; i++) {
+    const cell = document.createElement("div");
+    cell.style.border = "1px solid black";
+    cell.style.display = "flex";
+    cell.style.alignItems = "center";
+    cell.style.justifyContent = "center";
+    cell.style.fontSize = "18px";
+    cell.textContent = letters[i] || "";
+    board.appendChild(cell);
+}
+</script>
+
+</body>
+</html>

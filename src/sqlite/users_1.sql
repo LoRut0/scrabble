@@ -49,7 +49,7 @@ CREATE INDEX idx_auth_tokens_expires
 -- Партия (метаданные). Текущее «живое» состояние — в Redis.
 CREATE TABLE games (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    host_user_id INTEGER,
+    host_user_id INTEGER NOT NULL UNIQUE,
     FOREIGN KEY (host_user_id) REFERENCES users(id)
     --TODO: add ongoing bool column
     --TODO: add max_players in game

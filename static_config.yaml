@@ -32,6 +32,11 @@ components_manager:
       method: GET,POST # Handle only GET requests.
       task_processor: main-task-processor # Run it on CPU bound task processor
 
+    cors_handler:
+      path: /*
+      method: OPTIONS
+      task_processor: main-task-processor
+
     game_storage:
 
     sqlitedb:

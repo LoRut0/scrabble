@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/formats/json/value.hpp>
 #include <userver/formats/json/value_builder.hpp>
@@ -25,6 +26,9 @@ using namespace userver;
 
 namespace services::general {
 
+// for http headers
+constexpr static std::string_view origins = "*";
+
 }
 
 namespace services::websocket {
@@ -43,7 +47,9 @@ namespace Actions {
         // try to submit tiles placed on board
         submit,
         // end a game
-        end
+        end,
+        // try to receive cur game_state in json
+        state
     };
 
     inline PlayerAction from_string(std::string str);
@@ -62,25 +68,29 @@ public:
     void Handle(server::websocket::WebSocketConnection& chat, server::request::RequestContext&) const override;
 
 private:
+    bool check_if_user_joined_(const int& game_id, const int& user_id) const;
+    /*
+     * @returns all info for frontend for current user
+     * @param {user_id} id of user
+     * @param {game_id} id of game
+     */
+    void current_game_state_for_user_(server::websocket::Message& message, const int& user_id, const int& game_id) const;
     /*
      * @brief Parses message from websocket, calls functions
      *
      * @throws {server::handlers::ClientError} if format of msg is bad
      */
     void ParseMessage(server::websocket::Message& message) const;
-    void action_place(server::websocket::Message& message, const formats::json::Value& json_msg) const;
-    void action_start(server::websocket::Message& message, const formats::json::Value& json_msg) const;
-    void action_choose(server::websocket::Message& message, const formats::json::Value& json_msg) const;
-    /*
-     * @brief checks if Json Format corresponds with expected
-     *
-     * @returns {0 | 1 | 2} 0-roll, 1-choose, 2-start
-     * @returns {-1} If format is bad
-     * @returns {100} if game requested to end
-     */
-    int JsonFormatCheck(formats::json::Value& msg) const;
+    void action_place(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const;
+    void action_start(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const;
+    void action_change(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const;
+    void action_end(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const;
+    void action_pass(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const;
+    void action_submit(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const;
 
     void DefaultInit(formats::json::ValueBuilder& json_for_redis, int64_t gameID) const;
+
+    int define_user_id_from_token_(const std::string& token) const;
 
     template <typename T>
     std::vector<T> ToVector(const formats::json::Value& json) const;
@@ -92,13 +102,6 @@ private:
     int64_t sqlDeleteValue(std::string_view key) const;
 
     storages::sqlite::ClientPtr sqlite_client_;
-
-    /// [REDIS component]
-
-    formats::json::Value redisGetJson(std::string_view key) const;
-    int redisPostJson(std::string_view key, const formats::json::Value& json_to_post) const;
-    int redisPostJson(std::string_view key, const std::string& json_to_post) const;
-    size_t redisDelete(std::string_view key) const;
 
     std::shared_ptr<ScrabbleGame::Storage::Client> game_storage_client_;
 };
@@ -205,7 +208,7 @@ private:
         start,
         list
     };
-    GameAction from_string_(const std::string& str) const;
+    GameAction from_string_GameAction(const std::string& str) const;
 
     /*
      * @brief creates new game with current user as host
@@ -219,7 +222,14 @@ private:
      * @param {"game_id"} game to join
      * @returns {"game_id"} of joined game or {} if error
      */
+    enum class JoinGameResult {
+        inserted,
+        joined,
+        error
+    };
+    JoinGameResult from_string_JoinGameResult(const std::string& str) const;
     std::string join_game_(server::http::HttpRequest& request, const int& user_id) const;
+    bool check_if_already_joined_(const int& game_id, const int& user_id) const;
     /*
      * @brief starts game that user is hosting
      * @param {"token"} user token

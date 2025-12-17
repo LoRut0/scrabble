@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игра | Scrabble</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="game-body">
+
+<div class="top-bar">
+    <a id="userLink" href="profile.html"></a>
+</div>
+    
+<div class="game-container">
+
+    <!-- ЛЕВАЯ ПАНЕЛЬ — история -->
+    <div class="history-panel">
+        <h2>История ходов</h2>
+        <div id="historyList" class="history-list"></div>
+    </div>
+
+    <!-- ЦЕНТР — поле для игры -->
+    <div class="board-panel">
+        <h2>Поле для игры</h2>
+        <div id="gameBoard" class="board"></div>
+
+        <div class="letters-panel" id="lettersPanel">
+            <!-- буквы игрока -->
+        </div>
+    </div>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ — игроки -->
+    <div class="players-panel">
+
+        <div id="playersList" class="players-list">
+            <!-- Игроки динамически -->
+        </div>
+
+        <div class="tiles-left">
+            Осталось фишек: <span id="tilesLeft">0</span>
+        </div>
+
+        <div class="action-buttons">
+            <button id="btnPass" class="action-btn">Пас</button>
+            <button id="btnSwap" class="action-btn">Поменять</button>
+            <button id="btnSend" class="action-btn">Отправить</button>
+        </div>
+    </div>
+
+</div>
+
+<script src="js/user_info.js"></script>
+<script>updateUserInfo();</script>
+<script src="js/api.js"></script>
+<script src="js/game_room.js"></script>
+</body>
+</html>
+

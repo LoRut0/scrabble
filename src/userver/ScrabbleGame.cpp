@@ -1,16 +1,34 @@
 #include "ScrabbleGame.hpp"
+#include "utils.hpp"
 #include <codecvt>
 #include <cstddef>
 #include <locale>
 #include <mutex>
 #include <optional>
+#include <shared_mutex>
 #include <string>
 #include <userver/components/component_base.hpp>
 #include <userver/engine/mutex.hpp>
 #include <userver/engine/shared_mutex.hpp>
+#include <userver/formats/json/value_builder.hpp>
 #include <userver/server/handlers/exceptions.hpp>
 
 namespace ScrabbleGame {
+
+userver::formats::json::Value Notifier::WaitForUpdate()
+{
+    std::unique_lock<userver::engine::Mutex> lock(mutex_);
+    cond_var_.Wait(lock, [&] { return !game_state_.IsEmpty(); });
+    return game_state_;
+}
+
+void Notifier::UpdateState(userver::formats::json::Value& game_state)
+{
+    std::lock_guard<userver::engine::Mutex> lock(mutex_);
+    game_state_ = std::move(game_state);
+    cond_var_.NotifyAll();
+    return;
+}
 
 Randomizer::Randomizer(const int& bag_size, const int& jokers_num)
     : bag_size(bag_size)
@@ -386,6 +404,31 @@ std::u32string ScrabbleGame::vertical_check_(
     return word;
 }
 
+int ScrabbleGame::check_if_player_joined(const int64_t& user_id)
+{
+    std::lock_guard<engine::Mutex> lock(mutex_);
+    auto finder = std::find(state_.players.begin(), state_.players.end(), user_id);
+    if (finder == state_.players.end())
+        return 0;
+    return std::distance(state_.players.begin(), finder);
+}
+
+int ScrabbleGame::set_players(std::vector<int64_t>& players)
+{
+    std::lock_guard<engine::Mutex> lock(mutex_);
+    this->state_.players.swap(players);
+    return 0;
+}
+
+int ScrabbleGame::start()
+{
+    std::lock_guard<engine::Mutex> lock(mutex_);
+    if (ongoing)
+        return 1;
+    ongoing = 1;
+    return 0;
+}
+
 #ifdef DEBUG
 void ScrabbleGame::draw()
 {
@@ -437,8 +480,42 @@ std::shared_ptr<ScrabbleGame> Client::get_game(const int& id)
 {
     const std::shared_lock<engine::SharedMutex> lock(shared_mutex_);
     if (umap.find(id) == umap.end())
-        throw server::handlers::ClientError(server::handlers::ExternalBody { "invalid game id" });
+        return nullptr;
     return umap[id];
 }
 
 } // namespace ScrabbleGame::Storage
+
+namespace ScrabbleGame {
+
+userver::formats::json::Value Serialize(const GameState& data, userver::formats::serialize::To<userver::formats::json::Value>)
+{
+    formats::json::ValueBuilder json_vb;
+
+    // letters
+    for (size_t x = 0; x < data.board_letters.size(); ++x) {
+        for (size_t y = 0; y < data.board_letters[x].size(); ++y) {
+
+            std::string cell;
+
+            if (data.board_letters[x][y]) {
+                cell = Char32ToUtf8(*data.board_letters[x][y]);
+            } else {
+                cell = " "; // пустая клетка
+            }
+
+            json_vb["letters"][x][y] = cell;
+        }
+    }
+
+    // prices
+    for (size_t x = 0; x < data.board_prices.size(); ++x) {
+        for (size_t y = 0; y < data.board_prices[x].size(); ++y) {
+            json_vb["prices"][x][y] = data.board_prices[x][y];
+        }
+    }
+
+    return json_vb.ExtractValue();
+}
+
+} // namespace ScrabbleGame

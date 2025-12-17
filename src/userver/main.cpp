@@ -1,3 +1,4 @@
+#include "Cors.hpp"
 #include "ScrabbleGame.hpp"
 #include "handlers.hpp"
 #include <userver/clients/dns/component.hpp>
@@ -16,6 +17,7 @@ int main(int argc, char* argv[])
                                     .Append<services::http::GameHandler>()
                                     .Append<services::http::LoginHandler>()
                                     .Append<services::http::RegistrationHandler>()
+                                    .Append<services::cors::CorsHandler>()
                                     .Append<ScrabbleGame::Storage::StorageComponent>()
                                     .Append<components::DefaultSecdistProvider>()
                                     .Append<components::Secdist>()

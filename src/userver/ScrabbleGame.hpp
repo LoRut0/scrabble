@@ -1,6 +1,10 @@
 #pragma once
 
+#include <initializer_list>
 #include <unordered_map>
+#include <userver/engine/condition_variable.hpp>
+#include <userver/formats/json/value.hpp>
+#include <userver/formats/serialize/to.hpp>
 #ifdef DEBUG
 #include <iostream>
 #endif
@@ -17,9 +21,10 @@
 #include <vector>
 
 #include <userver/components/component_base.hpp>
+#include <userver/engine/async.hpp>
 #include <userver/engine/mutex.hpp>
 #include <userver/engine/shared_mutex.hpp>
-// #include <userver/formats/json.hpp>
+#include <userver/formats/json.hpp>
 
 namespace ScrabbleGame {
 
@@ -35,6 +40,17 @@ constexpr std::array<char32_t, 128> defaultTiles {
 };
 
 namespace ScrabbleGame {
+
+class Notifier {
+public:
+    userver::formats::json::Value WaitForUpdate();
+    void UpdateState(userver::formats::json::Value& game_state);
+
+private:
+    userver::formats::json::Value game_state_;
+    userver::engine::Mutex mutex_;
+    userver::engine::ConditionVariable cond_var_;
+};
 
 struct PlayerState {
     std::vector<char32_t> hand;
@@ -86,6 +102,12 @@ public:
 
     std::vector<PlayerState> playersState;
     int current_player; // index in playersState
+    //
+    /*
+     * @brief vector that holds ids of players [0] - is host
+     */
+    std::vector<int64_t> players;
+
     std::vector<char32_t> bag;
     /*
      * @brief holds two-dimensional vector, which represents letters on board
@@ -135,6 +157,8 @@ private:
     char32_t DrawTile_();
 };
 
+userver::formats::json::Value Serialize(const GameState& data, userver::formats::serialize::To<userver::formats::json::Value>);
+
 class ScrabbleGame {
 public:
     /*
@@ -181,12 +205,40 @@ public:
      */
     GameState get_game_state();
 
+    /*
+     * @brief sets players to inputted vector [0] - host user_id
+     * @param {players} vector of user_id, empties while executing
+     * @retval {0} OK
+     */
+    int set_players(std::vector<int64_t>& players);
+
+    /*
+     * @brief checks if player joined a game
+     * @retval {int} order of player
+     * @retval {0} not joined
+     */
+    int check_if_player_joined(const int64_t& user_id);
+
+    /*
+     * @brief starts the game with current player list
+     * @retval {1} game is already ongoing
+     * @retval {0} OK
+     */
+    int start();
+
+    Notifier notifier;
+
 #ifdef DEBUG
     void draw();
 #endif
 
 private:
     userver::engine::Mutex mutex_;
+
+    /*
+     * @brief flag if game is ongoing or not
+     */
+    bool ongoing;
 
     GameState state_;
     std::function<bool(const std::u32string& word)> word_checker;
@@ -271,6 +323,11 @@ public:
 
     void add_game(const int& id, std::shared_ptr<ScrabbleGame> new_game);
 
+    /*
+     * @brief returns shared_ptr for game
+     * @paramm {id} id of game
+     * @retval {nullptr} if game was not found
+     */
     std::shared_ptr<ScrabbleGame> get_game(const int& id);
 
 private:

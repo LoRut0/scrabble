@@ -1,13 +1,58 @@
+#include "ScrabbleGame.hpp"
 #include "handlers.hpp"
+#include "utfcpp/source/utf8.h"
+#include "utils.hpp"
+#include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <userver/crypto/crypto.hpp>
+#include <userver/formats/json/serialize.hpp>
+#include <userver/formats/json/value_builder.hpp>
+#include <userver/logging/log.hpp>
+#include <userver/server/websocket/server.hpp>
+#include <userver/storages/sqlite/operation_types.hpp>
+#include <userver/storages/sqlite/result_set.hpp>
+#include <vector>
 
 #define MAX_SEQ 20
 
-inline constexpr std::string_view OngoingCreateTable = R"~(
-    CREATE TABLE IF NOT EXISTS ongoing (
-    key INTEGER PRIMARY KEY
-    )
+/*
+ * @brief returns user_id by jti token
+ * @param {jti} jti token
+ * @retval {user_id} 100% only one value
+ */
+inline constexpr std::string_view SqlUserIdByJti = R"~(
+    SELECT user_id 
+    FROM auth_tokens tok
+        WHERE jti = $1
+)~";
+/*
+ * @brief returns game_id by user_id of host
+ * @param {user_id} host player id
+ * @retval {game_id} 100% one value
+ */
+inline constexpr std::string_view SqlFindGameByHost = R"~(
+    SELECT game_id
+    FROM game_users
+        WHERE user_id == $1
+)~";
+/*
+ * @brief returns all players of game with host at FIRST place
+ * @param {game_id}
+ */
+inline constexpr std::string_view SqlGetAllPlayers = R"~(
+    SELECT
+        gu.user_id
+    FROM game_users gu
+    JOIN games g ON g.id = gu.game_id
+    WHERE gu.game_id = $1
+    ORDER BY
+        CASE
+            WHEN gu.user_id = g.host_user_id THEN 0
+            ELSE 1
+        END,
+        gu.user_id;
 )~";
 
 namespace services::websocket {
@@ -27,6 +72,8 @@ namespace Actions {
             return PlayerAction::submit;
         } else if (str == "end") {
             return PlayerAction::end;
+        } else if (str == "state") {
+            return PlayerAction::state;
         }
         throw server::handlers::ClientError(server::handlers::ExternalBody { "Wrong Player-req.action" });
     }
@@ -51,10 +98,14 @@ void WebsocketsHandler::Handle(server::websocket::WebSocketConnection& chat, ser
         chat.Close(*message.close_status);
 }
 
-int WebsocketsHandler::JsonFormatCheck(formats::json::Value& msg) const
+int WebsocketsHandler::define_user_id_from_token_(const std::string& token) const
 {
-    const std::string action = msg["action"].As<std::string>();
-    return -1;
+    const std::string jti = userver::crypto::hash::Sha256(token);
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(storages::sqlite::OperationType::kReadOnly, SqlUserIdByJti.data(), jti);
+    std::optional<int> user_id = std::move(result).AsOptionalSingleField<int>();
+    if (!user_id)
+        throw server::handlers::ClientError(server::handlers::ExternalBody { "invalid token from user" });
+    return user_id.value();
 }
 
 void WebsocketsHandler::ParseMessage(server::websocket::Message& message) const
@@ -63,25 +114,39 @@ void WebsocketsHandler::ParseMessage(server::websocket::Message& message) const
         throw server::handlers::ClientError(server::handlers::ExternalBody { "No json in request" });
     }
     formats::json::Value json_msg { formats::json::FromString(std::string_view(message.data)) };
-    const std::string action = json_msg["action"].As<std::string>();
-    switch (Actions::from_string(action)) {
+    const int user_id = define_user_id_from_token_(json_msg["token"].As<std::string>());
+
+    const std::string action_str = json_msg["action"].As<std::string>();
+    const Actions::PlayerAction action = Actions::from_string(action_str);
+
+    switch (action) {
     case Actions::PlayerAction::start: {
-        action_start(message, json_msg);
+        action_start(message, json_msg, user_id);
         break;
     }
     case Actions::PlayerAction::change: {
+        action_change(message, json_msg, user_id);
         break;
     }
     case Actions::PlayerAction::end: {
+        action_end(message, json_msg, user_id);
         break;
     }
     case Actions::PlayerAction::pass: {
+        action_pass(message, json_msg, user_id);
         break;
     }
     case Actions::PlayerAction::submit: {
+        action_submit(message, json_msg, user_id);
         break;
     }
     case Actions::PlayerAction::place: {
+        action_place(message, json_msg, user_id);
+        break;
+    }
+    case Actions::PlayerAction::state: {
+        int game_id = json_msg["game_id"].As<int>();
+        current_game_state_for_user_(message, user_id, game_id);
         break;
     }
 
@@ -89,103 +154,140 @@ void WebsocketsHandler::ParseMessage(server::websocket::Message& message) const
     }
 }
 
-void WebsocketsHandler::action_start(server::websocket::Message& message, const formats::json::Value& json_msg) const
+void WebsocketsHandler::current_game_state_for_user_(server::websocket::Message& message, const int& user_id, const int& game_id) const
 {
+    LOG_DEBUG() << "current_game_state";
+    formats::json::ValueBuilder json_vb;
+    auto game = game_storage_client_->get_game(game_id);
+    if (!game) {
+        LOG_DEBUG() << "No game pointer";
+        return;
+    }
+    int player_index = game->check_if_player_joined(user_id);
+    if (!player_index) {
+        message.data = R"({"error":404, "comment":"User not joined"})";
+        return;
+    }
+    auto game_state = game->get_game_state();
+
+    json_vb = game_state;
+
+    for (size_t i = 0; i < game_state.playersState[player_index].hand.size(); ++i) {
+        std::string tile;
+
+        tile = Char32ToUtf8(game_state.playersState[player_index].hand[i]);
+
+        json_vb["tiles"][i] = tile;
+    }
+
+    json_vb["score"] = game_state.playersState[player_index].score;
+
+    message.data = formats::json::ToStableString(json_vb.ExtractValue());
     return;
 }
 
-void WebsocketsHandler::action_place(server::websocket::Message& message, const formats::json::Value& json_msg) const
+void WebsocketsHandler::action_start(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const
 {
-    // LOG_DEBUG() << "Started case for rolling dices";
-    //
-    // const int64_t gameID = json_msg["gameID"].As<int64_t>();
-    // formats::json::Value current_state = redisGetJson(std::to_string(gameID));
-    // int rollnum = current_state["state"]["rollnum"].As<int>();
-    //
-    // if (rollnum >= 3) {
-    //     LOG_DEBUG() << "Client tries to play exceccive turn";
-    //     message.data = "{\"status\":409, \"error\":\"exceccive_turn\"}";
-    //     return;
-    // }
-    //
-    // // vector with boolean values, shows which dices to reroll
-    // const std::vector<int> dices_to_reroll { ToVector<int>(json_msg["dices"]) };
-    // // vector with random generated dices
-    // const std::vector<int> random_dices { DiceGame::RollDices() };
-    //
-    // LOG_DEBUG() << [&dices_to_reroll, &random_dices, &gameID](auto& out) {
-    //     out << "dices_to_reroll:\n";
-    //     for (const auto& elem : dices_to_reroll) {
-    //         out << elem << " ";
-    //     }
-    //     out << "\nrandom_dices:\n";
-    //     for (const auto& elem : random_dices) {
-    //         out << elem << " ";
-    //     }
-    //     out << "\ngameID = " << gameID;
-    // };
-    //
-    // std::vector<int> dices_in_json { ToVector<int>(current_state["state"]["dices"]) };
-    // formats::json::ValueBuilder vb { current_state };
-    // for (int i = 0; i < dices_to_reroll.size(); i++) {
-    //     if (dices_to_reroll[i]) {
-    //         dices_in_json[i] = random_dices[i];
-    //         vb["state"]["dices"][i] = random_dices[i];
-    //     }
-    // }
-    // DiceGame::Combinations cur_combinations = DiceGame::CalculateSequences(dices_in_json);
-    // vb["state"]["cur_sequences"] = cur_combinations;
-    //
-    // vb["state"]["rollnum"] = ++rollnum;
-    // vb["status"] = 100;
-    //
-    // current_state = vb.ExtractValue();
-    // message.data = formats::json::ToStableString(current_state);
-    // redisPostJson(std::to_string(gameID), message.data);
-    //
-    // LOG_DEBUG() << "Websocket msg to client = " << message.data;
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadOnly, SqlFindGameByHost.data(), user_id);
+    std::optional<int> game_id = std::move(result).AsOptionalSingleField<int>();
+    // TODO: all games of player must end, if he is not host
+    if (!game_id) {
+        message.close_status = server::websocket::CloseStatus::kBadMessageData;
+        message.data = "Player is not host";
+        return;
+    }
+    result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadOnly, SqlGetAllPlayers.data(), game_id);
+    std::vector<int64_t> all_players = std::move(result).AsVector<int64_t>();
 
+    std::shared_ptr<ScrabbleGame::ScrabbleGame> game = game_storage_client_->get_game(*game_id);
+    if (!game) {
+        LOG_DEBUG() << "No game pointer";
+        return;
+    }
+    game->set_players(all_players);
+    game->start();
+
+    current_game_state_for_user_(message, user_id, *game_id);
     return;
 }
 
-void WebsocketsHandler::action_choose(server::websocket::Message& message, const formats::json::Value& json_msg) const
+inline constexpr std::string_view SqlCheckIfUserAlreadyJoined = R"~(
+    SELECT 1 FROM game_users
+    WHERE game_id = $1 AND user_id = $2
+)~";
+
+bool WebsocketsHandler::check_if_user_joined_(const int& game_id, const int& user_id) const
 {
-    // LOG_DEBUG() << "Started case for choosing sequence";
-    // const int64_t gameID = json_msg["gameID"].As<int64_t>();
-    // formats::json::Value current_state = redisGetJson(std::to_string(gameID));
-    //
-    // if (current_state["state"]["rollnum"].As<int>() == 0) {
-    //     LOG_DEBUG() << "Client tries to choose seq without rolling";
-    //     message.data = "{\"status\":409, \"error\":\"no_roll\"}";
-    //     return;
-    // }
-    //
-    // std::string current_player;
-    // if (current_state["state"]["playerq"].As<int>() == 0)
-    //     current_player = "p1";
-    // else
-    //     current_player = "p2";
-    // std::string choosed_seq { json_msg["seq"].As<std::string>() };
-    //
-    // if (current_state["state"][current_player]["sequences"][choosed_seq].As<int>() != -1) {
-    //     LOG_DEBUG() << "Client tries to choose seq, which already had been choosed";
-    //     message.data = "{\"status\":409, \"error\":\"seq_already_choosed\"}";
-    //     return;
-    // }
-    //
-    // formats::json::ValueBuilder vb { current_state };
-    // vb["state"][current_player]["sequences"][choosed_seq] = current_state["state"]["cur_sequences"][choosed_seq].As<int>();
-    // vb["state"]["cur_sequences"] = DiceGame::Combinations(0);
-    //
-    // vb["state"]["rollnum"] = 0;
-    // if (current_player == "p1")
-    //     vb["state"]["playerq"] = 1;
-    // else
-    //     vb["state"]["playerq"] = 0;
-    //
-    // current_state = vb.ExtractValue();
-    // message.data = formats::json::ToStableString(current_state);
-    // redisPostJson(std::to_string(gameID), message.data);
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadWrite, SqlCheckIfUserAlreadyJoined.data(), game_id, user_id);
+    std::optional<int> field = std::move(result).AsOptionalSingleField<int>();
+    if (!field)
+        return 0;
+    return 1;
+}
+
+void WebsocketsHandler::action_place(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const
+{
+    int game_id = json_msg["game_id"].As<int>();
+    auto game = game_storage_client_->get_game(game_id);
+    if (!game) {
+        message.data = std::string { "game not exists" };
+        return;
+    }
+    if (!(game->check_if_player_joined(user_id))) {
+        message.data = std::string { "player not joined" };
+        return;
+    }
+    std::vector<std::vector<int>> coordinates = json_msg["coordinates"].As<std::vector<std::vector<int>>>();
+    std::string letters = json_msg["letters"].As<std::string>();
+    std::vector<char32_t> tiles = utf8str_to_utf32vec_(letters);
+    int result = game->TryPlaceTiles(coordinates, tiles);
+    if (result == -1) {
+        message.data = R"(
+            {"score": -1}
+        )";
+        return;
+    }
+    formats::json::ValueBuilder json_vb;
+    json_vb["score"] = result;
+    message.data = formats::json::ToStableString(json_vb.ExtractValue());
+    return;
+}
+
+void WebsocketsHandler::action_submit(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const
+{
+    int game_id = json_msg["game_id"].As<int>();
+    auto game = game_storage_client_->get_game(game_id);
+    if (!game) {
+        message.data = std::string { "game not exists" };
+        return;
+    }
+    if (!(game->check_if_player_joined(user_id))) {
+        message.data = std::string { "player not joined" };
+        return;
+    }
+    int result = game->SubmitWord();
+    if (result == -1) {
+        message.data = R"(
+            {"score": -1}
+        )";
+        return;
+    }
+    formats::json::ValueBuilder json_vb;
+    json_vb["score"] = result;
+    message.data = formats::json::ToStableString(json_vb.ExtractValue());
+    return;
+}
+
+void WebsocketsHandler::action_change(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const
+{
+    return;
+}
+void WebsocketsHandler::action_end(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const
+{
+    return;
+}
+void WebsocketsHandler::action_pass(server::websocket::Message& message, const formats::json::Value& json_msg, const int& user_id) const
+{
     return;
 }
 
@@ -218,5 +320,4 @@ std::vector<T> WebsocketsHandler::ToVector(const formats::json::Value& json_vl) 
     }
     return to_return;
 }
-
 }

@@ -2,6 +2,7 @@
 #include "handlers.hpp"
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <regex>
 #include <sodium.h>
 #include <stdexcept>
@@ -13,6 +14,7 @@
 #include <userver/formats/json/serialize.hpp>
 #include <userver/formats/json/value.hpp>
 #include <userver/formats/json/value_builder.hpp>
+#include <userver/logging/log.hpp>
 #include <userver/server/handlers/exceptions.hpp>
 #include <userver/server/http/http_status.hpp>
 #include <userver/storages/sqlite/execution_result.hpp>
@@ -124,6 +126,8 @@ bool RegistrationHandler::email_check_(const std::string& email) const
 
 std::string RegistrationHandler::HandleRequest(server::http::HttpRequest& request, server::request::RequestContext&) const
 {
+    request.GetHttpResponse().SetHeader(std::string { "Access-Control-Allow-Origin" }, services::general::origins.data());
+
     formats::json::Value body_json { formats::json::FromString(request.RequestBody()) };
     const std::string email = body_json["email"].As<std::string>();
     const std::string passwd = body_json["passwd"].As<std::string>();
@@ -136,20 +140,19 @@ std::string RegistrationHandler::HandleRequest(server::http::HttpRequest& reques
     switch (register_new_user_(email, passwd, nick)) {
     case RegistrationStatus::OK:
         request.SetResponseStatus(server::http::HttpStatus::OK);
-        break;
+        return nick;
     case RegistrationStatus::NicknameExists:
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        break;
+        return { "nickname already exists" };
     case RegistrationStatus::UserExists:
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        break;
+        return { "user already exists" };
     case RegistrationStatus::InternalFailure:
         request.SetResponseStatus(server::http::HttpStatus::InternalServerError);
-        break;
+        return { "internal server error :)" };
     }
 
-    request.SetRequestBody(nick);
-    return request.RequestBody();
+    return { "how you got there? RegistrationHandler::HandleRequest" };
 };
 
 RegistrationHandler::RegistrationHandler(const components::ComponentConfig& config, const components::ComponentContext& context)
@@ -262,7 +265,6 @@ LoginHandler::LoginStatus LoginHandler::login_checker_(const std::string& login,
     //           storages::sqlite::OperationType::kReadOnly,
     //           LoginQueryNick.data(),
     //           login);
-    // TODO: strange things with move semantics here, be careful
     storages::sqlite::ResultSet result = sqlite_client_->Execute(
         storages::sqlite::OperationType::kReadOnly,
         LoginQueryNick.data(),
@@ -292,6 +294,8 @@ LoginHandler::LoginStatus LoginHandler::get_token_for_client_(const int& user_id
 
 std::string LoginHandler::HandleRequest(server::http::HttpRequest& request, server::request::RequestContext&) const
 {
+    request.GetHttpResponse().SetHeader(std::string { "Access-Control-Allow-Origin" }, services::general::origins.data());
+
     formats::json::Value body_json { formats::json::FromString(request.RequestBody()) };
     const std::string login = body_json["login"].As<std::string>();
     const std::string passwd = body_json["passwd"].As<std::string>();
@@ -357,13 +361,28 @@ inline constexpr std::string_view SqlDeleteGameWithHostCheck = R"~(
         AND host_user_id = $2;
 )~";
 /*
- * @brief inserts new user to game_users
+ * @brief inserts new user to game_users or tries to join game
  * @param {game_id}
  * @param {user_id}
+ * @retval {"inserted"} if inserted into game_users
+ * @retval {"joined"} if player already was inserted into game_users
+ * @retval {"error"} if error
  */
 inline constexpr std::string_view SqlInsertNewUserInGame = R"~(
     INSERT INTO game_users(game_id, user_id)
-    VALUES ($1, $2)
+    VALUES ($1, $2);
+)~";
+/*
+ * @brief inserts new user to game_users or tries to join game
+ * @param {game_id}
+ * @param {user_id}
+ * @retval {"inserted"} if inserted into game_users
+ * @retval {"joined"} if player already was inserted into game_users
+ * @retval {"error"} if error
+ */
+inline constexpr std::string_view SqlCheckUserStatusInGame = R"~(
+    INSERT OR IGNORE INTO game_users(game_id, user_id)
+    VALUES ($1, $2);
 )~";
 /*
  * @brief reeturns all games ids
@@ -425,7 +444,7 @@ int GameHandler::define_user_id_from_token_(const std::string& token) const
     return user_id.value();
 }
 
-GameHandler::GameAction GameHandler::from_string_(const std::string& str) const
+GameHandler::GameAction GameHandler::from_string_GameAction(const std::string& str) const
 {
     if (str == "join") {
         return GameAction::join;
@@ -456,19 +475,74 @@ std::string GameHandler::create_game_(server::http::HttpRequest& request, const 
     return std::to_string(new_game_id);
 }
 
+GameHandler::JoinGameResult GameHandler::from_string_JoinGameResult(const std::string& str) const
+{
+    if (str == "joined") {
+        return JoinGameResult::joined;
+    } else if (str == "inserted") {
+        return JoinGameResult::inserted;
+    } else if (str == "error") {
+        return JoinGameResult::error;
+    }
+    return JoinGameResult::error;
+}
+
+/*
+ * @brief returns one field with 1, if user already joined game
+ * @param {game_id}
+ * @param {user_id}
+ */
+inline constexpr std::string_view SqlCheckIfUserAlreadyJoined = R"~(
+    SELECT 1 FROM game_users
+    WHERE game_id = $1 AND user_id = $2
+)~";
+
+/*
+ * @brief checks if user has already joined the game
+ * @retval {0} not joined
+ * @retval {1} joined
+ */
+bool GameHandler::check_if_already_joined_(const int& game_id, const int& user_id) const
+{
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadWrite, SqlCheckIfUserAlreadyJoined.data(), game_id, user_id);
+    std::optional<int> field = std::move(result).AsOptionalSingleField<int>();
+    if (!field)
+        return 0;
+    return 1;
+}
+
 std::string GameHandler::join_game_(server::http::HttpRequest& request, const int& user_id) const
 {
+    // user joins game, all of his other games should end if he hosts any
+    // if he already joined game then he just receives game_id
+    // otherwise he appended to game_users, then receives game_id
     formats::json::Value json = userver::formats::json::FromString(request.RequestBody());
     const int game_id = json["game_id"].As<int>();
 
-    storages::sqlite::ExecutionResult result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadWrite, SqlInsertNewUserInGame.data(), game_id, user_id).AsExecutionResult();
-
-    if (result.rows_affected == 0) {
-        request.SetResponseStatus(server::http::HttpStatus::InternalServerError);
-        return {};
+    if (check_if_already_joined_(game_id, user_id)) {
+        request.SetResponseStatus(server::http::HttpStatus::OK);
+        return std::to_string(game_id);
     }
-    request.SetResponseStatus(server::http::HttpStatus::OK);
-    return std::to_string(game_id);
+
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadWrite, SqlInsertNewUserInGame.data(), game_id, user_id);
+    // TODO: make check for max players, make all other games of player end
+    const JoinGameResult join_game_result = JoinGameResult::joined;
+    // const JoinGameResult join_game_result = from_string_JoinGameResult(std::move(result).AsSingleField<std::string>());
+
+    switch (join_game_result) {
+    case JoinGameResult::joined:
+        request.SetResponseStatus(server::http::HttpStatus::OK);
+        return std::to_string(game_id);
+    case JoinGameResult::inserted:
+        request.SetResponseStatus(server::http::HttpStatus::OK);
+        return std::to_string(game_id);
+    case JoinGameResult::error:
+        request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
+        return { "Error while joining" };
+    }
+
+    request.SetResponseStatus(server::http::HttpStatus::kInternalServerError);
+    return {};
 }
 
 // formats::json::ValueBuilder GameHandler::json_default_init_(const int& game_id) const
@@ -524,7 +598,7 @@ inline constexpr std::string_view sqlReturnGamesInfo = R"~(
     WITH game_players_count AS (
         SELECT 
             g.id AS game_id,
-            1 + COUNT(gu.user_id) AS player_count
+            COUNT(gu.user_id) AS player_count
         FROM games g
         LEFT JOIN game_users gu ON gu.game_id = g.id
         GROUP BY g.id
@@ -549,14 +623,15 @@ std::string GameHandler::list_games_(server::http::HttpRequest& request) const
 {
     std::vector<GameInfo> list_games_info = list_games_helper_();
     formats::json::ValueBuilder json_vb;
-    json_vb["game_info_list"] = nullptr;
     json_vb["game_info_list"].Resize(list_games_info.size());
-    for (const GameInfo& game_info : list_games_info) {
+
+    for (size_t i = 0; i < list_games_info.size(); ++i) {
+        const GameInfo& game_info = list_games_info[i];
         formats::json::ValueBuilder vb_game_info;
         vb_game_info["game_id"] = game_info.game_id;
         vb_game_info["host_user_name"] = game_info.host_user_name;
         vb_game_info["num_of_users"] = game_info.num_of_users;
-        json_vb["game_info_list"].PushBack(std::move(vb_game_info));
+        json_vb["game_info_list"][i] = std::move(vb_game_info);
     }
 
     request.SetResponseStatus(server::http::HttpStatus::OK);
@@ -565,6 +640,8 @@ std::string GameHandler::list_games_(server::http::HttpRequest& request) const
 
 std::string GameHandler::HandleRequest(server::http::HttpRequest& request, server::request::RequestContext&) const
 {
+    request.GetHttpResponse().SetHeader(std::string { "Access-Control-Allow-Origin" }, services::general::origins.data());
+
     formats::json::Value json = userver::formats::json::FromString(request.RequestBody());
     const std::string action = json["action"].As<std::string>();
     const int user_id = define_user_id_from_token_(json["token"].As<std::string>());
@@ -573,7 +650,7 @@ std::string GameHandler::HandleRequest(server::http::HttpRequest& request, serve
     LOG_DEBUG() << "action = " << action;
     LOG_DEBUG() << "user_id = " << user_id;
 
-    const GameAction enumAction = from_string_(action);
+    const GameAction enumAction = from_string_GameAction(action);
     switch (enumAction) {
     case GameAction::create:
         return create_game_(request, user_id);

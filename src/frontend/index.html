@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth | Scrabble</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>Scrabble</h1>
+
+    <div class="tabs">
+        <button id="loginTab" class="active">Вход</button>
+        <button id="registerTab">Регистрация</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <form id="loginForm" class="form">
+        <input type="text" id="loginLogin" placeholder="Логин или email" required>
+        <input type="password" id="loginPasswd" placeholder="Пароль" required>
+
+        <button type="submit">Войти</button>
+        <p class="error" id="loginError"></p>
+    </form>
+
+    <!-- REGISTER FORM -->
+    <form id="registerForm" class="form hidden">
+        <input type="email" id="regEmail" placeholder="Email" required>
+        <input type="text" id="regNick" placeholder="Никнейм" required>
+        <input type="password" id="regPasswd" placeholder="Пароль" required>
+
+        <button type="submit">Создать аккаунт</button>
+        <p class="error" id="regError"></p>
+    </form>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/login.js"></script>
+<script src="js/register.js"></script>
+
+</body>
+</html>

@@ -18,7 +18,8 @@
       "change",
       "pass",
       "submit",
-      "end"
+      "end",
+      "state"
     ],
     "seq": "name_of_seq",
     "sessionID": "sjdhfsdjhfsdhjf"
