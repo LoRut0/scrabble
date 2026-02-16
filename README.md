@@ -53,6 +53,7 @@
 
 ### Структура проекта
 
+```sh
 .
 ├── Makefile
 ├── README.md
@@ -72,8 +73,8 @@
 │   │   ├── profile.html
 │   │   └── styles.css
 │   ├── sqlite
-│   │   ├── users_1.sql
-│   └── userver
+│   │   └── users_1.sql
+│   ├── userver
 │   ├── CMakeLists.txt
 │   ├── Cors.cpp
 │   ├── Cors.hpp
@@ -93,3 +94,4 @@
 │   ├── utils.hpp
 │   └── websocket.cpp
 └── static_config.yaml
+```
