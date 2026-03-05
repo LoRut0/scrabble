@@ -1,0 +1,53 @@
+Давай теперь перейдём к странице со списком серверов
+Опишу тебе api
+/game
+
+Создание новой игры: ожидает json вида
+{
+    "action": "create",
+    "token": "user raw token"
+}
+Возращает ошибку или id новой игры
+
+Вывести список игр: ожидает json вида
+{
+    "action": "list",
+    "token": "user raw token"
+}
+Возвращает ошибку или список игр в формате json:
+"game_unfo_list": [
+    {
+        "game_id": int,
+        "host_user_name": "username",
+        "num_of_users": int
+    },
+    {
+        "game_id": int,
+        "host_user_name": "username",
+        "num_of_users": int
+    }
+]
+
+Начать игру: ожидает json вида
+{
+    "action": "start",
+    "token": "user raw token",
+    "game_id": "id игры"
+}
+Возвращает ошибку или id игры
+
+Завершить игру: ожидает json вида
+{
+    "action": "end",
+    "token": "user raw token",
+    "game_id": "id игры"
+}
+Возвращает ошибку или id игры
+
+Подключиться к игре: ожидает json вида
+{
+    "action": "join",
+    "token": "user raw token",
+    "game_id": "id игры"
+}
+Возвращает ошибку или id игры

@@ -1,11 +1,5 @@
 # notes
 
-```sh
-redis-cli -p 6379 to connect to redis client
-keys * to list all
-get <key>
-```
-
 ```
 sqlite3 /tmp/keyjson.db # to connect to sqlite3
 select * from ongoing
@@ -32,3 +26,4 @@ select * from ongoing
 3. if True, player can submit word [x]
 4. SubmitWord() [x]
 5. new_board receives new_tiles, new_coords [x]
+

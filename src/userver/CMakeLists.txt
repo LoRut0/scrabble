@@ -32,5 +32,3 @@ target_link_libraries(${PROJECT_NAME}
     sodium
     utf8cpp
 )
-
-userver_testsuite_add_simple()

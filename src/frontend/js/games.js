@@ -109,8 +109,6 @@ async function joinGame(gameId) {
         });
 
         alert("Вы подключились к игре #" + id);
-        // сюда потом добавим переход в комнату
-        // window.location.href = "room.html?game_id=" + id;
 
         window.location.href = "game_room.html?game_id=" + id;
 

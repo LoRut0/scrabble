@@ -35,18 +35,27 @@ struct Tile {
 
 } // namespace ScrabbleGame
 
-constexpr std::array<char32_t, 128> defaultTiles {
-    { U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'Б', U'Б', U'Б', U'В', U'В', U'В', U'В', U'В', U'Г', U'Г', U'Г', U'Д', U'Д', U'Д', U'Д', U'Д', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Ж', U'Ж', U'З', U'З', U'И', U'И', U'И', U'И', U'И', U'И', U'И', U'И', U'Й', U'Й', U'Й', U'Й', U'К', U'К', U'К', U'К', U'К', U'К', U'Л', U'Л', U'Л', U'Л', U'М', U'М', U'М', U'М', U'М', U'Н', U'Н', U'Н', U'Н', U'Н', U'Н', U'Н', U'Н', U'О', U'О', U'О', U'О', U'О', U'О', U'О', U'О', U'О', U'О', U'П', U'П', U'П', U'П', U'П', U'П', U'Р', U'Р', U'Р', U'Р', U'Р', U'Р', U'С', U'С', U'С', U'С', U'С', U'С', U'Т', U'Т', U'Т', U'Т', U'Т', U'У', U'У', U'У', U'Ф', U'Х', U'Х', U'Ц', U'Ч', U'Ч', U'Ш', U'Щ', U'Ъ', U'Ы', U'Ы', U'Ь', U'Ь', U'Э', U'Ю', U'Я', U'Я', U'Я' }
-};
+constexpr std::array<char32_t, 128> defaultTiles{
+    {U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'А', U'Б', U'Б',
+     U'Б', U'В', U'В', U'В', U'В', U'В', U'Г', U'Г', U'Г', U'Д', U'Д', U'Д',
+     U'Д', U'Д', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Е', U'Ж',
+     U'Ж', U'З', U'З', U'И', U'И', U'И', U'И', U'И', U'И', U'И', U'И', U'Й',
+     U'Й', U'Й', U'Й', U'К', U'К', U'К', U'К', U'К', U'К', U'Л', U'Л', U'Л',
+     U'Л', U'М', U'М', U'М', U'М', U'М', U'Н', U'Н', U'Н', U'Н', U'Н', U'Н',
+     U'Н', U'Н', U'О', U'О', U'О', U'О', U'О', U'О', U'О', U'О', U'О', U'О',
+     U'П', U'П', U'П', U'П', U'П', U'П', U'Р', U'Р', U'Р', U'Р', U'Р', U'Р',
+     U'С', U'С', U'С', U'С', U'С', U'С', U'Т', U'Т', U'Т', U'Т', U'Т', U'У',
+     U'У', U'У', U'Ф', U'Х', U'Х', U'Ц', U'Ч', U'Ч', U'Ш', U'Щ', U'Ъ', U'Ы',
+     U'Ы', U'Ь', U'Ь', U'Э', U'Ю', U'Я', U'Я', U'Я'}};
 
 namespace ScrabbleGame {
 
 class Notifier {
-public:
+  public:
     userver::formats::json::Value WaitForUpdate();
-    void UpdateState(userver::formats::json::Value& game_state);
+    void UpdateState(userver::formats::json::Value &game_state);
 
-private:
+  private:
     userver::formats::json::Value game_state_;
     userver::engine::Mutex mutex_;
     userver::engine::ConditionVariable cond_var_;
@@ -64,8 +73,8 @@ class Randomizer {
 
     std::mt19937 mt_random;
 
-public:
-    Randomizer(const int& bag_size, const int& jokers_num);
+  public:
+    Randomizer(const int &bag_size, const int &jokers_num);
 
     /*
      * @brief returns random number [0, bag_size)
@@ -84,7 +93,7 @@ public:
 };
 
 struct GameState {
-public:
+  public:
     // max num of tiles in player hand
     const unsigned long TILES_MAX_IN_HAND;
 
@@ -116,7 +125,8 @@ public:
      */
     std::vector<std::vector<std::optional<char32_t>>> board_letters;
     /*
-     * @brief holds two-dimensional vector, which represents price of tiles on board
+     * @brief holds two-dimensional vector, which represents price of tiles on
+     * board
      *
      * @notes board_prices[x][y]
      */
@@ -139,16 +149,17 @@ public:
      * @param {default_tiles} array with all possible tiles with tiles necessary
      * frequency
      */
-    GameState(const int& tiles_max, const int& players_num, const int& bag_size,
-        const int& jokers_num, const std::array<char32_t, 128>& default_tiles);
+    GameState(const int &tiles_max, const int &players_num, const int &bag_size,
+              const int &jokers_num,
+              const std::array<char32_t, 128> &default_tiles);
 
-private:
+  private:
     Randomizer randomizer;
     /*
      * @brief fills players bags with tiles, used in initializer
      */
-    void FillBag_(const int& bag_size, const int& jokers_num,
-        const std::array<char32_t, 128>& default_tiles);
+    void FillBag_(const int &bag_size, const int &jokers_num,
+                  const std::array<char32_t, 128> &default_tiles);
     /*
      * @brief Tries to draw a Tile from bag
      * @retval {char32_t} returns letter from bag (random), if value of char ==
@@ -157,24 +168,27 @@ private:
     char32_t DrawTile_();
 };
 
-userver::formats::json::Value Serialize(const GameState& data, userver::formats::serialize::To<userver::formats::json::Value>);
+userver::formats::json::Value
+Serialize(const GameState &data,
+          userver::formats::serialize::To<userver::formats::json::Value>);
 
 class ScrabbleGame {
-public:
+  public:
     /*
      * @brief Creates new game instance with default values
      *
-     * @param {tiles_max} max num of tiles in player hand, def=7, recomended >= 7
+     * @param {tiles_max} max num of tiles in player hand, def=7, recomended >=
+     * 7
      * @param {players_num} num of players, def=2, must be >= 2
      * @param {bag_size} how much letters in bag
      * @param {jokers_num} how much jokers in bag
      * @param {default_tiles} array with all possible tiles with tiles necessary
      * frequency
      */
-    ScrabbleGame(std::function<bool(const std::u32string& word)> word_checker,
-        const int& tiles_max = 7, const int& players_num = 2,
-        const int& bag_size = 131, const int& jokers_num = 3,
-        const std::array<char32_t, 128>& default_tiles = defaultTiles);
+    ScrabbleGame(std::function<bool(const std::u32string &word)> word_checker,
+                 const int &tiles_max = 7, const int &players_num = 2,
+                 const int &bag_size = 131, const int &jokers_num = 3,
+                 const std::array<char32_t, 128> &default_tiles = defaultTiles);
 
     /*
      * @brief Tries to place a word on board
@@ -183,14 +197,14 @@ public:
      * @param {tiles} vector of letters of word
      * words, should return true if word exists, else if not
      *
-     * @retval {state_.score} state_.score becomes 0 or more if tiles placement is
-     * correct
+     * @retval {state_.score} state_.score becomes 0 or more if tiles placement
+     * is correct
      * @retval {int} returns score for Tiles if placement is correct, else -1
      *
      * @throws {char*} error
      */
-    int TryPlaceTiles(std::vector<std::vector<int>>& coordinates,
-        std::vector<char32_t>& tiles);
+    int TryPlaceTiles(std::vector<std::vector<int>> &coordinates,
+                      std::vector<char32_t> &tiles);
 
     /*
      * @brief Places tiles on board if possible
@@ -210,14 +224,14 @@ public:
      * @param {players} vector of user_id, empties while executing
      * @retval {0} OK
      */
-    int set_players(std::vector<int64_t>& players);
+    int set_players(std::vector<int64_t> &players);
 
     /*
      * @brief checks if player joined a game
      * @retval {int} order of player
      * @retval {0} not joined
      */
-    int check_if_player_joined(const int64_t& user_id);
+    int check_if_player_joined(const int64_t &user_id);
 
     /*
      * @brief starts the game with current player list
@@ -226,13 +240,11 @@ public:
      */
     int start();
 
-    Notifier notifier;
-
 #ifdef DEBUG
     void draw();
 #endif
 
-private:
+  private:
     userver::engine::Mutex mutex_;
 
     /*
@@ -241,7 +253,7 @@ private:
     bool ongoing;
 
     GameState state_;
-    std::function<bool(const std::u32string& word)> word_checker;
+    std::function<bool(const std::u32string &word)> word_checker;
 
     /*
      * @brief Checks placement of tiles inside TryPlaceTiles()
@@ -249,8 +261,8 @@ private:
      * @param {word_checker(std::u32string&)} function to check existence of
      * words, should return true if word exists, else if not
      *
-     * @retval {state_.score} state_.score becomes 0 or more if tiles placement is
-     * correct
+     * @retval {state_.score} state_.score becomes 0 or more if tiles placement
+     * is correct
      *
      * @throws {char*} error
      */
@@ -269,10 +281,9 @@ private:
      * @param {&horizontal} should be 1 if all tiles in horizontal row, 0 if all
      * tiles in vertical row
      */
-    std::vector<std::u32string>
-    GetNewWords_(std::vector<std::vector<std::optional<char32_t>>>& new_board_letters,
-        std::vector<std::vector<int>>& coordinates,
-        const bool& horizontal);
+    std::vector<std::u32string> GetNewWords_(
+        std::vector<std::vector<std::optional<char32_t>>> &new_board_letters,
+        std::vector<std::vector<int>> &coordinates, const bool &horizontal);
 
     /*
      * @brief gathers word that were formed by one tile, which belongs to tiles
@@ -283,9 +294,9 @@ private:
      * @param {&new_board_letters} board with all new placed tiles
      * @param {&tile_coords} coords of tile to check formed words from
      */
-    std::u32string
-    horizontal_check_(std::vector<std::vector<std::optional<char32_t>>>& new_board_letters,
-        std::vector<int>& tile_coords);
+    std::u32string horizontal_check_(
+        std::vector<std::vector<std::optional<char32_t>>> &new_board_letters,
+        std::vector<int> &tile_coords);
 
     /*
      * @brief gathers word that were formed by one tile, which belongs to tiles
@@ -296,9 +307,9 @@ private:
      * @param {&new_board_letters} board with all new placed tiles
      * @param {&tile_coords} coords of tile to check formed words from
      */
-    std::u32string
-    vertical_check_(std::vector<std::vector<std::optional<char32_t>>>& new_board_letters,
-        std::vector<int>& tile_coords);
+    std::u32string vertical_check_(
+        std::vector<std::vector<std::optional<char32_t>>> &new_board_letters,
+        std::vector<int> &tile_coords);
 
     /*
      * @brief calculates value of word
@@ -307,7 +318,7 @@ private:
      *
      * @retval {int} value of word
      */
-    int calculate_score_(const std::u32string& word);
+    int calculate_score_(const std::u32string &word) const;
 };
 
 } // namespace ScrabbleGame
@@ -317,35 +328,38 @@ using namespace userver;
 namespace ScrabbleGame::Storage {
 
 class Client final {
-public:
+  public:
     Client() = default;
     ~Client() = default;
 
-    void add_game(const int& id, std::shared_ptr<ScrabbleGame> new_game);
+    void add_game(const int &id, std::shared_ptr<ScrabbleGame> new_game);
 
     /*
      * @brief returns shared_ptr for game
      * @paramm {id} id of game
      * @retval {nullptr} if game was not found
      */
-    std::shared_ptr<ScrabbleGame> get_game(const int& id);
+    std::shared_ptr<ScrabbleGame> get_game(const int &id);
 
-private:
+    Notifier notifier;
+
+  private:
     engine::SharedMutex shared_mutex_;
     std::unordered_map<int, std::shared_ptr<ScrabbleGame>> umap;
 };
 
 class StorageComponent final : public components::ComponentBase {
-public:
+  public:
     // name of your component to refer in static config
     static constexpr std::string_view kName = "game_storage";
 
-    StorageComponent(const components::ComponentConfig& config, const components::ComponentContext& context);
+    StorageComponent(const components::ComponentConfig &config,
+                     const components::ComponentContext &context);
 
     std::shared_ptr<Client> GetStorage();
 
-private:
+  private:
     std::shared_ptr<Client> client_;
 };
 
-} // namespace ScrabbleGame
+} // namespace ScrabbleGame::Storage

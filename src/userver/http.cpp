@@ -23,9 +23,7 @@
 #include <userver/storages/sqlite/result_set.hpp>
 #include <userver/storages/sqlite/transaction.hpp>
 
-namespace services::general {
-
-} // namespace services::general
+namespace services::general {} // namespace services::general
 
 namespace services::http {
 
@@ -43,7 +41,8 @@ inline constexpr std::string_view RegisterQueryUsersInsert = R"~(
     VALUES($1, $1, $2);
 )~";
 /*
- * @brief registering new user in user in user_credentials, takes last_insert_rowid() as user_id
+ * @brief registering new user in user in user_credentials, takes
+ * last_insert_rowid() as user_id
  * @param {passwd_hash}
  */
 inline constexpr std::string_view RegisterQueryCredentialsInsert = R"~(
@@ -51,35 +50,38 @@ inline constexpr std::string_view RegisterQueryCredentialsInsert = R"~(
     VALUES(last_insert_rowid(), $1);
 )~";
 
-bool VerifyPassword(const std::string& password,
-    const std::string& stored_hash)
-{
+bool VerifyPassword(const std::string &password,
+                    const std::string &stored_hash) {
     return crypto_pwhash_str_verify(stored_hash.c_str(), password.c_str(),
-               password.size())
-        == 0;
+                                    password.size()) == 0;
 }
 
-std::string HashPassword(const std::string& password)
-{
+std::string HashPassword(const std::string &password) {
     char hash[crypto_pwhash_STRBYTES];
 
     if (crypto_pwhash_str(hash, password.c_str(), password.size(),
-            crypto_pwhash_OPSLIMIT_MODERATE,
-            crypto_pwhash_MEMLIMIT_MODERATE)
-        != 0) {
+                          crypto_pwhash_OPSLIMIT_MODERATE,
+                          crypto_pwhash_MEMLIMIT_MODERATE) != 0) {
         throw std::runtime_error("Out of Memory");
     }
 
     return std::string(hash);
 }
 
-RegistrationHandler::RegistrationStatus RegistrationHandler::register_new_user_(const std::string& email, const std::string& passwd, const std::string& nick) const
-{
+RegistrationHandler::RegistrationStatus
+RegistrationHandler::register_new_user_(const std::string &email,
+                                        const std::string &passwd,
+                                        const std::string &nick) const {
     // TODO: check for user existence
     std::string hashed_passwd = HashPassword(passwd);
-    storages::sqlite::Transaction transaction = sqlite_client_->Begin(userver::v2_::storages::sqlite::OperationType::kReadWrite, storages::sqlite::settings::TransactionOptions());
+    storages::sqlite::Transaction transaction = sqlite_client_->Begin(
+        userver::v2_16_rc::storages::sqlite::OperationType::kReadWrite,
+        storages::sqlite::settings::TransactionOptions());
     transaction.Execute(RegisterQueryUsersInsert.data(), nick, email);
-    storages::sqlite::ExecutionResult result = transaction.Execute(RegisterQueryCredentialsInsert.data(), hashed_passwd).AsExecutionResult();
+    storages::sqlite::ExecutionResult result =
+        transaction
+            .Execute(RegisterQueryCredentialsInsert.data(), hashed_passwd)
+            .AsExecutionResult();
     if (result.rows_affected != 0) {
         transaction.Commit();
         return RegistrationStatus::OK;
@@ -88,8 +90,7 @@ RegistrationHandler::RegistrationStatus RegistrationHandler::register_new_user_(
     return RegistrationStatus::InternalFailure;
 };
 
-bool RegistrationHandler::nick_check_(const std::string& nick) const
-{
+bool RegistrationHandler::nick_check_(const std::string &nick) const {
     // 3–32 символа: буквы, цифры, _, -, .
     static const std::regex re(R"(^[A-Za-z0-9_.-]{3,32}$)");
 
@@ -107,8 +108,7 @@ bool RegistrationHandler::nick_check_(const std::string& nick) const
     return true;
 };
 
-bool RegistrationHandler::email_check_(const std::string& email) const
-{
+bool RegistrationHandler::email_check_(const std::string &email) const {
     if (email.size() > 254)
         return false;
 
@@ -124,17 +124,21 @@ bool RegistrationHandler::email_check_(const std::string& email) const
     return true;
 };
 
-std::string RegistrationHandler::HandleRequest(server::http::HttpRequest& request, server::request::RequestContext&) const
-{
-    request.GetHttpResponse().SetHeader(std::string { "Access-Control-Allow-Origin" }, services::general::origins.data());
+std::string
+RegistrationHandler::HandleRequest(server::http::HttpRequest &request,
+                                   server::request::RequestContext &) const {
+    request.GetHttpResponse().SetHeader(
+        std::string{"Access-Control-Allow-Origin"},
+        services::general::origins.data());
 
-    formats::json::Value body_json { formats::json::FromString(request.RequestBody()) };
+    formats::json::Value body_json{
+        formats::json::FromString(request.RequestBody())};
     const std::string email = body_json["email"].As<std::string>();
     const std::string passwd = body_json["passwd"].As<std::string>();
     const std::string nick = body_json["nick"].As<std::string>();
-    if (!email_check_(email)
-        || !nick_check_(nick)) {
-        throw server::handlers::ClientError { server::handlers::ExternalBody { "invalid email or nick" } };
+    if (!email_check_(email) || !nick_check_(nick)) {
+        throw server::handlers::ClientError{
+            server::handlers::ExternalBody{"invalid email or nick"}};
     }
 
     switch (register_new_user_(email, passwd, nick)) {
@@ -143,40 +147,46 @@ std::string RegistrationHandler::HandleRequest(server::http::HttpRequest& reques
         return nick;
     case RegistrationStatus::NicknameExists:
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        return { "nickname already exists" };
+        return {"nickname already exists"};
     case RegistrationStatus::UserExists:
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        return { "user already exists" };
+        return {"user already exists"};
     case RegistrationStatus::InternalFailure:
-        request.SetResponseStatus(server::http::HttpStatus::InternalServerError);
-        return { "internal server error :)" };
+        request.SetResponseStatus(
+            server::http::HttpStatus::InternalServerError);
+        return {"internal server error :)"};
     }
 
-    return { "how you got there? RegistrationHandler::HandleRequest" };
+    return {"how you got there? RegistrationHandler::HandleRequest"};
 };
 
-RegistrationHandler::RegistrationHandler(const components::ComponentConfig& config, const components::ComponentContext& context)
-    : HttpHandlerBase(config, context)
-    , sqlite_client_(context.FindComponent<components::SQLite>("sqlitedb").GetClient()) { };
+RegistrationHandler::RegistrationHandler(
+    const components::ComponentConfig &config,
+    const components::ComponentContext &context)
+    : HttpHandlerBase(config, context),
+      sqlite_client_(
+          context.FindComponent<components::SQLite>("sqlitedb").GetClient()) {};
 
 /*****************
  * LOGIN_HANDLER *
  *****************/
 
-SessionTokens GenerateSessionTokens()
-{
+SessionTokens GenerateSessionTokens() {
     constexpr size_t kTokenSize = 32;
     std::string random_bytes = userver::crypto::GenerateRandomBlock(kTokenSize);
 
-    std::string raw_token = userver::crypto::base64::Base64UrlEncode(random_bytes);
+    std::string raw_token =
+        userver::crypto::base64::Base64UrlEncode(random_bytes);
     std::string jti = userver::crypto::hash::Sha256(raw_token);
 
-    return { raw_token, jti };
+    return {raw_token, jti};
 }
 
-LoginHandler::LoginHandler(const components::ComponentConfig& config, const components::ComponentContext& context)
-    : HttpHandlerBase(config, context)
-    , sqlite_client_(context.FindComponent<components::SQLite>("sqlitedb").GetClient()) { };
+LoginHandler::LoginHandler(const components::ComponentConfig &config,
+                           const components::ComponentContext &context)
+    : HttpHandlerBase(config, context),
+      sqlite_client_(
+          context.FindComponent<components::SQLite>("sqlitedb").GetClient()) {};
 
 /*
  * @brief returns Auth token if exists
@@ -246,16 +256,16 @@ inline constexpr std::string_view LoginQueryEmail = R"~(
     WHERE u.email = $1
 )~";
 
-bool LoginHandler::define_login_type_(const std::string& login) const
-{
+bool LoginHandler::define_login_type_(const std::string &login) const {
     // TODO: to think of something better?
     if (login.find('@') != std::string::npos)
         return 0;
     return 1;
 }
 
-LoginHandler::LoginStatus LoginHandler::login_checker_(const std::string& login, const std::string& passwd, int& user_id) const
-{
+LoginHandler::LoginStatus
+LoginHandler::login_checker_(const std::string &login,
+                             const std::string &passwd, int &user_id) const {
     // storages::sqlite::ResultSet result = (define_login_type_(login))
     //     ? sqlite_client_->Execute(
     //           storages::sqlite::OperationType::kReadOnly,
@@ -265,11 +275,11 @@ LoginHandler::LoginStatus LoginHandler::login_checker_(const std::string& login,
     //           storages::sqlite::OperationType::kReadOnly,
     //           LoginQueryNick.data(),
     //           login);
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(
-        storages::sqlite::OperationType::kReadOnly,
-        LoginQueryNick.data(),
-        login);
-    std::optional<UserDBInfo> user_info = std::move(result).AsOptionalSingleRow<UserDBInfo>();
+    storages::sqlite::ResultSet result =
+        sqlite_client_->Execute(storages::sqlite::OperationType::kReadOnly,
+                                LoginQueryNick.data(), login);
+    std::optional<UserDBInfo> user_info =
+        std::move(result).AsOptionalSingleRow<UserDBInfo>();
     if (!user_info)
         return LoginStatus::UserNotExists;
     bool login_success = VerifyPassword(passwd, user_info->passwd_hash);
@@ -279,11 +289,16 @@ LoginHandler::LoginStatus LoginHandler::login_checker_(const std::string& login,
     return LoginStatus::OK;
 };
 
-LoginHandler::LoginStatus LoginHandler::get_token_for_client_(const int& user_id, std::string& raw_token) const
-{
+LoginHandler::LoginStatus
+LoginHandler::get_token_for_client_(const int &user_id,
+                                    std::string &raw_token) const {
     SessionTokens tokens = GenerateSessionTokens();
 
-    storages::sqlite::ExecutionResult result = sqlite_client_->Execute(storages::sqlite::OperationType::kReadWrite, AddAuthToken.data(), tokens.jti, user_id).AsExecutionResult();
+    storages::sqlite::ExecutionResult result =
+        sqlite_client_
+            ->Execute(storages::sqlite::OperationType::kReadWrite,
+                      AddAuthToken.data(), tokens.jti, user_id)
+            .AsExecutionResult();
 
     if (result.rows_affected == 0)
         return LoginStatus::InternalFailure;
@@ -292,11 +307,15 @@ LoginHandler::LoginStatus LoginHandler::get_token_for_client_(const int& user_id
     return LoginStatus::OK;
 }
 
-std::string LoginHandler::HandleRequest(server::http::HttpRequest& request, server::request::RequestContext&) const
-{
-    request.GetHttpResponse().SetHeader(std::string { "Access-Control-Allow-Origin" }, services::general::origins.data());
+std::string
+LoginHandler::HandleRequest(server::http::HttpRequest &request,
+                            server::request::RequestContext &) const {
+    request.GetHttpResponse().SetHeader(
+        std::string{"Access-Control-Allow-Origin"},
+        services::general::origins.data());
 
-    formats::json::Value body_json { formats::json::FromString(request.RequestBody()) };
+    formats::json::Value body_json{
+        formats::json::FromString(request.RequestBody())};
     const std::string login = body_json["login"].As<std::string>();
     const std::string passwd = body_json["passwd"].As<std::string>();
 
@@ -313,13 +332,14 @@ std::string LoginHandler::HandleRequest(server::http::HttpRequest& request, serv
     switch (login_status) {
     case LoginStatus::UserNotExists:
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        return { "UserNotExists" };
+        return {"UserNotExists"};
     case LoginStatus::PasswdIncorrect:
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        return { "PasswdIncorrect" };
+        return {"PasswdIncorrect"};
     case LoginStatus::InternalFailure:
-        request.SetResponseStatus(server::http::HttpStatus::InternalServerError);
-        return { "InternalFailure" };
+        request.SetResponseStatus(
+            server::http::HttpStatus::InternalServerError);
+        return {"InternalFailure"};
     case LoginStatus::OK:
         request.SetResponseStatus(server::http::HttpStatus::OK);
         break;
@@ -434,18 +454,19 @@ inline constexpr std::string_view SqlReturnAllGamePlayers = R"~(
     )
 )~";
 
-int GameHandler::define_user_id_from_token_(const std::string& token) const
-{
+int GameHandler::define_user_id_from_token_(const std::string &token) const {
     const std::string jti = userver::crypto::hash::Sha256(token);
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(storages::sqlite::OperationType::kReadOnly, SqlUserIdByJti.data(), jti);
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(
+        storages::sqlite::OperationType::kReadOnly, SqlUserIdByJti.data(), jti);
     std::optional<int> user_id = std::move(result).AsOptionalSingleField<int>();
     if (!user_id)
-        throw server::handlers::ClientError(server::handlers::ExternalBody { "invalid token from user" });
+        throw server::handlers::ClientError(
+            server::handlers::ExternalBody{"invalid token from user"});
     return user_id.value();
 }
 
-GameHandler::GameAction GameHandler::from_string_GameAction(const std::string& str) const
-{
+GameHandler::GameAction
+GameHandler::from_string_GameAction(const std::string &str) const {
     if (str == "join") {
         return GameAction::join;
     } else if (str == "start") {
@@ -457,26 +478,35 @@ GameHandler::GameAction GameHandler::from_string_GameAction(const std::string& s
     } else if (str == "list") {
         return GameAction::list;
     }
-    throw server::handlers::ClientError(server::handlers::ExternalBody { "invalid gameAction" });
+    throw server::handlers::ClientError(
+        server::handlers::ExternalBody{"invalid gameAction"});
 }
 
-GameHandler::GameHandler(const components::ComponentConfig& config, const components::ComponentContext& context)
-    : HttpHandlerBase(config, context)
-    , sqlite_client_(context.FindComponent<components::SQLite>("sqlitedb").GetClient())
-    , game_storage_client_(context.FindComponent<ScrabbleGame::Storage::StorageComponent>("game_storage").GetStorage()) { };
+GameHandler::GameHandler(const components::ComponentConfig &config,
+                         const components::ComponentContext &context)
+    : HttpHandlerBase(config, context),
+      sqlite_client_(
+          context.FindComponent<components::SQLite>("sqlitedb").GetClient()),
+      game_storage_client_(
+          context
+              .FindComponent<ScrabbleGame::Storage::StorageComponent>(
+                  "game_storage")
+              .GetStorage()) {};
 
-std::string GameHandler::create_game_(server::http::HttpRequest& request, const int& user_id) const
-{
+std::string GameHandler::create_game_(server::http::HttpRequest &request,
+                                      const int &user_id) const {
     // TODO: check if current user already hosts a game and end it
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(storages::sqlite::OperationType::kReadWrite, SqlInsertNewGame.data(), user_id);
+    storages::sqlite::ResultSet result =
+        sqlite_client_->Execute(storages::sqlite::OperationType::kReadWrite,
+                                SqlInsertNewGame.data(), user_id);
     const int new_game_id = std::move(result).AsSingleField<int>();
 
     request.SetResponseStatus(server::http::HttpStatus::OK);
     return std::to_string(new_game_id);
 }
 
-GameHandler::JoinGameResult GameHandler::from_string_JoinGameResult(const std::string& str) const
-{
+GameHandler::JoinGameResult
+GameHandler::from_string_JoinGameResult(const std::string &str) const {
     if (str == "joined") {
         return JoinGameResult::joined;
     } else if (str == "inserted") {
@@ -502,21 +532,24 @@ inline constexpr std::string_view SqlCheckIfUserAlreadyJoined = R"~(
  * @retval {0} not joined
  * @retval {1} joined
  */
-bool GameHandler::check_if_already_joined_(const int& game_id, const int& user_id) const
-{
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadWrite, SqlCheckIfUserAlreadyJoined.data(), game_id, user_id);
+bool GameHandler::check_if_already_joined_(const int &game_id,
+                                           const int &user_id) const {
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(
+        userver::v2_16_rc::storages::sqlite::OperationType::kReadWrite,
+        SqlCheckIfUserAlreadyJoined.data(), game_id, user_id);
     std::optional<int> field = std::move(result).AsOptionalSingleField<int>();
     if (!field)
         return 0;
     return 1;
 }
 
-std::string GameHandler::join_game_(server::http::HttpRequest& request, const int& user_id) const
-{
+std::string GameHandler::join_game_(server::http::HttpRequest &request,
+                                    const int &user_id) const {
     // user joins game, all of his other games should end if he hosts any
     // if he already joined game then he just receives game_id
     // otherwise he appended to game_users, then receives game_id
-    formats::json::Value json = userver::formats::json::FromString(request.RequestBody());
+    formats::json::Value json =
+        userver::formats::json::FromString(request.RequestBody());
     const int game_id = json["game_id"].As<int>();
 
     if (check_if_already_joined_(game_id, user_id)) {
@@ -524,10 +557,13 @@ std::string GameHandler::join_game_(server::http::HttpRequest& request, const in
         return std::to_string(game_id);
     }
 
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadWrite, SqlInsertNewUserInGame.data(), game_id, user_id);
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(
+        userver::v2_16_rc::storages::sqlite::OperationType::kReadWrite,
+        SqlInsertNewUserInGame.data(), game_id, user_id);
     // TODO: make check for max players, make all other games of player end
     const JoinGameResult join_game_result = JoinGameResult::joined;
-    // const JoinGameResult join_game_result = from_string_JoinGameResult(std::move(result).AsSingleField<std::string>());
+    // const JoinGameResult join_game_result =
+    // from_string_JoinGameResult(std::move(result).AsSingleField<std::string>());
 
     switch (join_game_result) {
     case JoinGameResult::joined:
@@ -538,22 +574,24 @@ std::string GameHandler::join_game_(server::http::HttpRequest& request, const in
         return std::to_string(game_id);
     case JoinGameResult::error:
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        return { "Error while joining" };
+        return {"Error while joining"};
     }
 
     request.SetResponseStatus(server::http::HttpStatus::kInternalServerError);
     return {};
 }
 
-// formats::json::ValueBuilder GameHandler::json_default_init_(const int& game_id) const
+// formats::json::ValueBuilder GameHandler::json_default_init_(const int&
+// game_id) const
 // {
 //
 // }
 
-std::string GameHandler::start_game_(server::http::HttpRequest& request, const int& user_id) const
-{
+std::string GameHandler::start_game_(server::http::HttpRequest &request,
+                                     const int &user_id) const {
     LOG_DEBUG() << "Starting new Game";
-    formats::json::Value json = userver::formats::json::FromString(request.RequestBody());
+    formats::json::Value json =
+        userver::formats::json::FromString(request.RequestBody());
     const int game_id = json["game_id"].As<int>();
 
     // TODO: check if user is host
@@ -565,20 +603,27 @@ std::string GameHandler::start_game_(server::http::HttpRequest& request, const i
     //
     // return ok if all is good
 
-    std::shared_ptr<ScrabbleGame::ScrabbleGame> game_ptr = std::make_shared<ScrabbleGame::ScrabbleGame>(
-        [](const std::u32string&) { return 1; });
+    std::shared_ptr<ScrabbleGame::ScrabbleGame> game_ptr =
+        std::make_shared<ScrabbleGame::ScrabbleGame>(
+            [](const std::u32string &) { return 1; });
     game_storage_client_->add_game(game_id, game_ptr);
 
     request.SetResponseStatus(server::http::HttpStatus::OK);
     return std::to_string(game_id);
 }
 
-std::string GameHandler::end_game_(server::http::HttpRequest& request, const int& user_id) const
-{
-    formats::json::Value json = userver::formats::json::FromString(request.RequestBody());
+std::string GameHandler::end_game_(server::http::HttpRequest &request,
+                                   const int &user_id) const {
+    formats::json::Value json =
+        userver::formats::json::FromString(request.RequestBody());
     const int game_id = json["game_id"].As<int>();
 
-    storages::sqlite::ExecutionResult result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadWrite, SqlDeleteGameWithHostCheck.data(), game_id, user_id).AsExecutionResult();
+    storages::sqlite::ExecutionResult result =
+        sqlite_client_
+            ->Execute(
+                userver::v2_16_rc::storages::sqlite::OperationType::kReadWrite,
+                SqlDeleteGameWithHostCheck.data(), game_id, user_id)
+            .AsExecutionResult();
 
     if (result.rows_affected == 0) {
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
@@ -612,21 +657,22 @@ inline constexpr std::string_view sqlReturnGamesInfo = R"~(
     JOIN game_players_count gpc ON g.id = gpc.game_id
 )~";
 
-std::vector<GameHandler::GameInfo> GameHandler::list_games_helper_() const
-{
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(userver::v2_::storages::sqlite::OperationType::kReadOnly, sqlReturnGamesInfo.data());
-    std::vector<GameInfo> list_game_info = std::move(result).AsVector<GameInfo>();
+std::vector<GameHandler::GameInfo> GameHandler::list_games_helper_() const {
+    storages::sqlite::ResultSet result = sqlite_client_->Execute(
+        userver::v2_16_rc::storages::sqlite::OperationType::kReadOnly,
+        sqlReturnGamesInfo.data());
+    std::vector<GameInfo> list_game_info =
+        std::move(result).AsVector<GameInfo>();
     return list_game_info;
 }
 
-std::string GameHandler::list_games_(server::http::HttpRequest& request) const
-{
+std::string GameHandler::list_games_(server::http::HttpRequest &request) const {
     std::vector<GameInfo> list_games_info = list_games_helper_();
     formats::json::ValueBuilder json_vb;
     json_vb["game_info_list"].Resize(list_games_info.size());
 
     for (size_t i = 0; i < list_games_info.size(); ++i) {
-        const GameInfo& game_info = list_games_info[i];
+        const GameInfo &game_info = list_games_info[i];
         formats::json::ValueBuilder vb_game_info;
         vb_game_info["game_id"] = game_info.game_id;
         vb_game_info["host_user_name"] = game_info.host_user_name;
@@ -638,13 +684,18 @@ std::string GameHandler::list_games_(server::http::HttpRequest& request) const
     return formats::json::ToStableString(json_vb.ExtractValue());
 }
 
-std::string GameHandler::HandleRequest(server::http::HttpRequest& request, server::request::RequestContext&) const
-{
-    request.GetHttpResponse().SetHeader(std::string { "Access-Control-Allow-Origin" }, services::general::origins.data());
+std::string
+GameHandler::HandleRequest(server::http::HttpRequest &request,
+                           server::request::RequestContext &) const {
+    request.GetHttpResponse().SetHeader(
+        std::string{"Access-Control-Allow-Origin"},
+        services::general::origins.data());
 
-    formats::json::Value json = userver::formats::json::FromString(request.RequestBody());
+    formats::json::Value json =
+        userver::formats::json::FromString(request.RequestBody());
     const std::string action = json["action"].As<std::string>();
-    const int user_id = define_user_id_from_token_(json["token"].As<std::string>());
+    const int user_id =
+        define_user_id_from_token_(json["token"].As<std::string>());
     // TODO: change throw to kBadRequest inside define_user_id_from_token_
 
     LOG_DEBUG() << "action = " << action;
@@ -668,7 +719,8 @@ std::string GameHandler::HandleRequest(server::http::HttpRequest& request, serve
         return list_games_(request);
         break;
     }
-    throw server::handlers::ClientError(server::handlers::ExternalBody { "invalid gameAction" });
+    throw server::handlers::ClientError(
+        server::handlers::ExternalBody{"invalid gameAction"});
 }
 
 } // namespace services::http
