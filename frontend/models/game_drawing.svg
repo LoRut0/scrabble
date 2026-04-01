@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1920"
+   height="1080"
+   viewBox="0 0 508 285.75"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   sodipodi:docname="game_drawing.svg"
+   inkscape:export-filename="game_drawing.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:lockguides="false"
+     showguides="true"
+     inkscape:zoom="0.81505004"
+     inkscape:cx="1668.6092"
+     inkscape:cy="560.08831"
+     inkscape:window-width="1854"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2">
+    <rect
+       x="1432.4106"
+       y="67.059987"
+       width="394.77325"
+       height="80.000019"
+       id="rect2011" />
+    <rect
+       x="1430.8773"
+       y="499.99999"
+       width="394.77325"
+       height="80.000019"
+       id="rect1838" />
+    <rect
+       x="65.505028"
+       y="829.9999"
+       width="434.1413"
+       height="769.99967"
+       id="rect1742" />
+    <rect
+       x="1489.9361"
+       y="669.59755"
+       width="279.99997"
+       height="80.000019"
+       id="rect1691" />
+    <rect
+       x="1489.9362"
+       y="791.46665"
+       width="289.99995"
+       height="90.000058"
+       id="rect1685" />
+    <rect
+       x="1489.9362"
+       y="913.33574"
+       width="279.99997"
+       height="80.000019"
+       id="rect1679" />
+    <rect
+       x="1489.9362"
+       y="913.33574"
+       width="279.99997"
+       height="80.000019"
+       id="rect1673" />
+    <rect
+       x="690.74192"
+       y="913.33574"
+       width="530.96818"
+       height="80.000019"
+       id="rect1345" />
+    <rect
+       x="673.4142"
+       y="233.81056"
+       width="556.93384"
+       height="170.40148"
+       id="rect1039" />
+    <rect
+       x="716.00247"
+       y="291.08796"
+       width="578.58834"
+       height="192.99187"
+       id="rect304" />
+    <rect
+       x="1432.4106"
+       y="67.05999"
+       width="394.77325"
+       height="80.000015"
+       id="rect2011-5" />
+    <rect
+       x="1432.4106"
+       y="67.05999"
+       width="394.77325"
+       height="80.000015"
+       id="rect2011-54" />
+    <rect
+       x="1432.4106"
+       y="67.05999"
+       width="394.77325"
+       height="80.000015"
+       id="rect2011-4" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <text
+       xml:space="preserve"
+       transform="scale(0.26458333)"
+       id="text302"
+       style="font-size:42.6667px;white-space:pre;shape-inside:url(#rect304);fill:#4d4d4d" />
+    <g
+       id="g1097"
+       transform="translate(0,-23.812509)">
+      <rect
+         style="fill:#000000;stroke-width:0.258745"
+         id="rect111"
+         width="211.66667"
+         height="211.66667"
+         x="148.16666"
+         y="37.041664" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.252277"
+         id="rect111-3"
+         width="206.375"
+         height="206.375"
+         x="150.8125"
+         y="39.6875" />
+      <text
+         xml:space="preserve"
+         transform="matrix(0.26458333,0,0,0.26458333,1.8483362,69.814128)"
+         id="text1037"
+         style="font-size:66.6667px;white-space:pre;shape-inside:url(#rect1039);fill:#000000"
+         x="254.86694"
+         y="0"><tspan
+           x="691.88056"
+           y="294.46892"
+           id="tspan320"><tspan
+             style="font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:center;text-anchor:middle"
+             id="tspan318">Поле для игры</tspan></tspan></text>
+    </g>
+    <g
+       id="g1197"
+       transform="translate(2.1166667,-3.1750001)">
+      <rect
+         style="fill:#000000;stroke-width:0.319858"
+         id="rect1099"
+         width="26.458334"
+         height="26.458334"
+         x="148.16664"
+         y="242.18259" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.255886"
+         id="rect1099-6"
+         width="21.166666"
+         height="21.166666"
+         x="150.81247"
+         y="244.82841" />
+    </g>
+    <g
+       id="g1197-1"
+       transform="translate(31.94633,-3.1750001)">
+      <rect
+         style="fill:#000000;stroke-width:0.319858"
+         id="rect1099-2"
+         width="26.458334"
+         height="26.458334"
+         x="148.16664"
+         y="242.18259" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.255886"
+         id="rect1099-6-7"
+         width="21.166666"
+         height="21.166666"
+         x="150.81247"
+         y="244.82841" />
+    </g>
+    <g
+       id="g1197-0"
+       transform="translate(61.775992,-3.1750001)">
+      <rect
+         style="fill:#000000;stroke-width:0.319858"
+         id="rect1099-9"
+         width="26.458334"
+         height="26.458334"
+         x="148.16664"
+         y="242.18259" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.255886"
+         id="rect1099-6-3"
+         width="21.166666"
+         height="21.166666"
+         x="150.81247"
+         y="244.82841" />
+    </g>
+    <g
+       id="g1197-6"
+       transform="translate(121.43533,-3.1750001)">
+      <rect
+         style="fill:#000000;stroke-width:0.319858"
+         id="rect1099-0"
+         width="26.458334"
+         height="26.458334"
+         x="148.16664"
+         y="242.18259" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.255886"
+         id="rect1099-6-6"
+         width="21.166666"
+         height="21.166666"
+         x="150.81247"
+         y="244.82841" />
+    </g>
+    <g
+       id="g1197-2"
+       transform="translate(91.605654,-3.1750001)">
+      <rect
+         style="fill:#000000;stroke-width:0.319858"
+         id="rect1099-61"
+         width="26.458334"
+         height="26.458334"
+         x="148.16664"
+         y="242.18259" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.255886"
+         id="rect1099-6-8"
+         width="21.166666"
+         height="21.166666"
+         x="150.81247"
+         y="244.82841" />
+    </g>
+    <g
+       id="g1197-7"
+       transform="translate(151.26499,-3.1750001)">
+      <rect
+         style="fill:#000000;stroke-width:0.319858"
+         id="rect1099-92"
+         width="26.458334"
+         height="26.458334"
+         x="148.16664"
+         y="242.18259" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.255886"
+         id="rect1099-6-0"
+         width="21.166666"
+         height="21.166666"
+         x="150.81247"
+         y="244.82841" />
+    </g>
+    <g
+       id="g1197-23"
+       transform="translate(181.09465,-3.1750001)">
+      <rect
+         style="fill:#000000;stroke-width:0.319858"
+         id="rect1099-7"
+         width="26.458334"
+         height="26.458334"
+         x="148.16664"
+         y="242.18259" />
+      <rect
+         style="fill:#ffffff;stroke-width:0.255886"
+         id="rect1099-6-5"
+         width="21.166666"
+         height="21.166666"
+         x="150.81247"
+         y="244.82841" />
+    </g>
+    <g
+       id="g1599"
+       transform="translate(12.215694)">
+      <g
+         id="g1197-23-9"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <g
+       id="g1599-8"
+       transform="translate(12.215688,-32.244531)">
+      <g
+         id="g1197-23-9-9"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-7"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2-3"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <g
+       id="g1599-6"
+       transform="translate(12.215682,-64.489062)">
+      <g
+         id="g1197-23-9-1"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2-9"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <g
+       id="g1599-6-3"
+       transform="matrix(1.5505048,0,0,7.8999979,-574.956,-1874.9302)">
+      <g
+         id="g1197-23-9-1-1"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2-9"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.305075"
+           id="rect1099-6-5-2-9-4"
+           width="24.694445"
+           height="25.788509"
+           x="149.04858"
+           y="242.5175" />
+      </g>
+    </g>
+    <g
+       id="g1599-6-3-7"
+       transform="matrix(1.4996586,0,0,5.5772561,-197.19713,-1319.7773)">
+      <g
+         id="g1197-23-9-1-1-8"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2-9-4"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.305075"
+           id="rect1099-6-5-2-9-4-5"
+           width="24.694445"
+           height="25.788509"
+           x="149.04858"
+           y="242.5175" />
+      </g>
+    </g>
+    <g
+       id="g1599-6-0-0"
+       transform="matrix(1.4099046,0,0,1,-159.58677,-223.91046)">
+      <g
+         id="g1197-23-9-1-3-6"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2-6-3"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2-9-1-2"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <g
+       id="g1599-6-0-06"
+       transform="matrix(1.4099046,0,0,1,-159.58677,-197.45212)">
+      <g
+         id="g1197-23-9-1-3-1"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2-6-5"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2-9-1-5"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <g
+       id="g1599-6-0-4"
+       transform="matrix(1.4099046,0,0,1,-159.58677,-170.99379)">
+      <g
+         id="g1197-23-9-1-3-7"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2-6-6"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2-9-1-56"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <g
+       id="g1599-6-0-9"
+       transform="matrix(1.4099046,0,0,1,-159.58678,-144.53547)">
+      <g
+         id="g1197-23-9-1-3-3"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2-6-7"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2-9-1-4"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26177856,0,0,0.26177856,7.5095152,4.2497416)"
+       id="text1343"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:63.3381px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:start;white-space:pre;shape-inside:url(#rect1345);fill:#4d4d4d"><tspan
+         x="690.74219"
+         y="970.19628"
+         id="tspan324"><tspan
+           style="fill:#000000"
+           id="tspan322">Б  у  к  в  ы</tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,3.4573513,2.9560688)"
+       id="text1677"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:46.6667px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:start;white-space:pre;shape-inside:url(#rect1679);fill:#000000"><tspan
+         x="1489.9355"
+         y="955.22991"
+         id="tspan326">Отправить
+</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,7.4083413,4.2789883)"
+       id="text1683"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:46.6667px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:start;white-space:pre;shape-inside:url(#rect1685);fill:#000000"><tspan
+         x="1489.9355"
+         y="833.36076"
+         id="tspan328">Поменять</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,25.824361,3.9438656)"
+       id="text1689"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:46.6667px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:start;white-space:pre;shape-inside:url(#rect1691);fill:#000000"><tspan
+         x="1489.9355"
+         y="711.49162"
+         id="tspan330">Пас</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,-0.47797043,-108.23063)"
+       id="text1740"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:46.6667px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:center;white-space:pre;shape-inside:url(#rect1742);fill:#000000"><tspan
+         x="100.57593"
+         y="871.89397"
+         id="tspan332">История ходов</tspan></text>
+    <g
+       id="g1599-6-0"
+       transform="matrix(1.4099046,0,0,1,-159.99247,-109.36175)">
+      <g
+         id="g1197-23-9-1-3"
+         transform="matrix(2.9999999,0,0,1,-65.149152,-3.1750001)">
+        <rect
+           style="fill:#000000;stroke-width:0.319858"
+           id="rect1099-7-2-2-6"
+           width="26.458334"
+           height="26.458334"
+           x="148.16664"
+           y="242.18259" />
+        <rect
+           style="fill:#ffffff;stroke-width:0.276388"
+           id="rect1099-6-5-2-9-1"
+           width="24.694445"
+           height="21.166666"
+           x="149.04858"
+           y="244.82841" />
+      </g>
+    </g>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,0,2.6458334)"
+       id="text1836"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:45.3333px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:center;white-space:pre;shape-inside:url(#rect1838);fill:#000000"><tspan
+         x="1437.8637"
+         y="540.69694"
+         id="tspan334">Осталось фишек</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,-0.20979805,4.2093112)"
+       id="text2009"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:45.3333px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:center;white-space:pre;shape-inside:url(#rect2011);fill:#000000"><tspan
+         x="1507.3969"
+         y="107.75749"
+         id="tspan336">Имя: счёт</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,-0.20979805,57.538018)"
+       id="text2009-7"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:45.3333px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:center;white-space:pre;shape-inside:url(#rect2011-54);display:inline;fill:#000000"><tspan
+         x="1507.3969"
+         y="107.75749"
+         id="tspan338">Имя: счёт</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,-0.20979998,83.790315)"
+       id="text2009-4"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:45.3333px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:center;white-space:pre;shape-inside:url(#rect2011-4);display:inline;fill:#000000"><tspan
+         x="1507.3969"
+         y="107.75749"
+         id="tspan340">Имя: счёт</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.26458333,0,0,0.26458333,-0.20978998,30.873659)"
+       id="text2009-2"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:45.3333px;font-family:'JetBrainsMonoNL Nerd Font Mono';-inkscape-font-specification:'JetBrainsMonoNL Nerd Font Mono';text-align:center;white-space:pre;shape-inside:url(#rect2011-5);display:inline;fill:#000000"><tspan
+         x="1507.3969"
+         y="107.75749"
+         id="tspan342">Имя: счёт</tspan></text>
+  </g>
+</svg>

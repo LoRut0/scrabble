@@ -1,0 +1,163 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide empty methods
+hide empty fields
+
+package "services::general" {
+  class GeneralConfig <<utility>> {
+    {static} origins : std::string_view = "*"
+  }
+}
+
+package "services::websocket" {
+
+  package "Actions" {
+    enum PlayerAction {
+      start
+      place
+      change
+      pass
+      submit
+      end
+      state
+    }
+
+    class ActionsUtils <<utility>> {
+      {static} from_string(str : std::string) : PlayerAction
+    }
+  }
+
+  class WebsocketsHandler {
+    {static} kName : std::string_view = "websocket-handler"
+
+    +WebsocketsHandler(config : components::ComponentConfig, context : components::ComponentContext)
+    +Handle(chat : server::websocket::WebSocketConnection, ctx : server::request::RequestContext) const : void
+
+    -check_if_user_joined_(game_id : int, user_id : int) const : bool
+    -current_game_state_for_user_(message : server::websocket::Message, user_id : int, game_id : int) const : void
+    -ParseMessage(message : server::websocket::Message) const : void
+    -action_place(message : server::websocket::Message, json_msg : formats::json::Value, user_id : int) const : void
+    -action_start(message : server::websocket::Message, json_msg : formats::json::Value, user_id : int) const : void
+    -action_change(message : server::websocket::Message, json_msg : formats::json::Value, user_id : int) const : void
+    -action_end(message : server::websocket::Message, json_msg : formats::json::Value, user_id : int) const : void
+    -action_pass(message : server::websocket::Message, json_msg : formats::json::Value, user_id : int) const : void
+    -action_submit(message : server::websocket::Message, json_msg : formats::json::Value, user_id : int) const : void
+    -DefaultInit(json_for_redis : formats::json::ValueBuilder, gameID : int64_t) const : void
+    -define_user_id_from_token_(token : std::string) const : int
+    -ToVector<T>(json : formats::json::Value) const : std::vector<T>
+
+    -sql_ongoing_get_all() const : std::vector<int>
+    -sql_ongoing_new() const : std::string
+    -sql_ongoing_delete(key : std::string_view) const : int64_t
+
+    -sqlite_client_ : storages::sqlite::ClientPtr
+    -game_storage_client_ : std::shared_ptr<ScrabbleGame::Storage::Client>
+  }
+}
+
+package "services::http" {
+
+  class HttpUtils <<utility>> {
+    {static} VerifyPassword(password : std::string, stored_hash : std::string) : bool
+    {static} HashPassword(password : std::string) : std::string
+    {static} GenerateSessionTokens() : SessionTokens
+  }
+
+  struct SessionTokens {
+    +raw_token : std::string
+    +jti : std::string
+  }
+
+  enum RegistrationStatus {
+    OK
+    InternalFailure
+    UserExists
+    NicknameExists
+  }
+
+  class RegistrationHandler {
+    {static} kName : std::string_view = "http-registration_handler"
+
+    +RegistrationHandler(config : components::ComponentConfig, context : components::ComponentContext)
+    +HandleRequest(request : server::http::HttpRequest, ctx : server::request::RequestContext) const : std::string
+
+    -nick_check_(nick : std::string) const : bool
+    -email_check_(email : std::string) const : bool
+    -register_new_user_(email : std::string, passwd : std::string, nick : std::string) const : RegistrationStatus
+
+    -sqlite_client_ : storages::sqlite::ClientPtr
+  }
+
+  enum LoginStatus {
+    OK
+    InternalFailure
+    UserNotExists
+    PasswdIncorrect
+  }
+
+  struct UserDBInfo {
+    +passwd_hash : std::string
+    +user_id : int
+  }
+
+  class LoginHandler {
+    {static} kName : std::string_view = "http-login_handler"
+
+    +LoginHandler(config : components::ComponentConfig, context : components::ComponentContext)
+    +HandleRequest(request : server::http::HttpRequest, ctx : server::request::RequestContext) const : std::string
+
+    -login_checker_(login : std::string, passwd : std::string, user_id : int&) const : LoginStatus
+    -define_login_type_(login : std::string) const : bool
+    -get_token_for_client_(user_id : int, raw_token : std::string&) const : LoginStatus
+
+    -sqlite_client_ : storages::sqlite::ClientPtr
+  }
+
+  enum GameAction {
+    join
+    create
+    end
+    start
+    list
+  }
+
+  enum JoinGameResult {
+    inserted
+    joined
+    error
+  }
+
+  struct GameInfo {
+    +game_id : int
+    +host_user_name : std::string
+    +num_of_users : int
+  }
+
+  class GameHandler {
+    {static} kName : std::string_view = "http-game_handler"
+
+    +GameHandler(config : components::ComponentConfig, context : components::ComponentContext)
+    +HandleRequest(request : server::http::HttpRequest, ctx : server::request::RequestContext) const : std::string
+
+    -from_string_GameAction(str : std::string) const : GameAction
+    -create_game_(request : server::http::HttpRequest, user_id : int) const : std::string
+    -from_string_JoinGameResult(str : std::string) const : JoinGameResult
+    -join_game_(request : server::http::HttpRequest, user_id : int) const : std::string
+    -check_if_already_joined_(game_id : int, user_id : int) const : bool
+    -start_game_(request : server::http::HttpRequest, user_id : int) const : std::string
+    -end_game_(request : server::http::HttpRequest, user_id : int) const : std::string
+    -list_games_(request : server::http::HttpRequest) const : std::string
+    -list_games_helper_() const : std::vector<GameInfo>
+    -define_user_id_from_token_(token : std::string) const : int
+
+    -sqlite_client_ : storages::sqlite::ClientPtr
+    -game_storage_client_ : std::shared_ptr<ScrabbleGame::Storage::Client>
+  }
+}
+
+package "external/game" {
+  class "ScrabbleGame::Storage::Client" as GameStorageClient
+}
+
+@enduml

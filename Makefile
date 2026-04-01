@@ -1,9 +1,9 @@
 .Phony: test clean
 
 test:
-	cmake -S src/userver -B build
-	cmake --build build
+	cmake -S src -B src/.build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	cmake --build src/.build
 
 clean:
 	rm -f log.log
-	rm -rf build
+	rm -rf src/.build

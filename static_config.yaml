@@ -40,28 +40,10 @@ components_manager:
     game_storage:
 
     sqlitedb:
-      db-path: "/data/sql/key-json.db"
+      db-path: "/workspace/data/sql/key-json.db"
       fs-task-processor: fs-task-processor
 
-    redisdb:
-      groups:
-        - config_name: key-json # Key to lookup in secdist configuration
-          # shoult add key-json to /etc/redis_service/secure_data.json
-          db: key-json # Name to refer to the cluster in components::Redis::GetClient()
-
-      subscribe_groups: # Array of redis clusters to work with in subscribe mode
-
-      thread_pools:
-        redis_thread_pool_size: 8
-        sentinel_thread_pool_size: 1
-
     testsuite-support:
-
-    default-secdist-provider: # Component that loads configuration of hosts and passwords
-      config: /etc/redis_service/secure_data.json # Values are supposed to be stored in this file
-      missing-ok: true # ... but if the file is missing it is still ok
-      environment-secrets-key: SECDIST_CONFIG # ... values will be loaded from this environment value
-    # /// [Sample secdist static config]
 
     server:
       listener: # configuring the main listening socket...
@@ -72,7 +54,7 @@ components_manager:
       fs-task-processor: fs-task-processor
       loggers:
         default:
-          file_path: /media/loruto/lrdsk/MPEI/Website/scrabble_cursach/log.log
-          level: debug
+          file_path: /workspace/log.log
+          level: info
           overflow_behavior: discard # Drop logs if the system is too busy to write them down.
 
