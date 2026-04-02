@@ -1,21 +1,62 @@
 #include <map>
 #include <memory>
+#include <queue>
+#include <userver/components/component_base.hpp>
 #include <userver/engine/mutex.hpp>
+#include <userver/engine/shared_mutex.hpp>
 #include <vector>
 
-class Session {
-  public:
-    void push(std::string message);
+using namespace userver;
 
+class NotifierForUser {
   private:
+    std::queue<std::string> send_queue_;
+
+  public:
+    const std::string kUserName;
+
+    const std::string pop_message();
+    void push_message(const std::string &msg);
+    bool empty();
+
+    NotifierForUser(const std::string &UserName);
 };
 
-class Notifier {
+class NotifierComponent final : public components::ComponentBase {
   public:
-    std::shared_ptr<Session> get_session(int id);
-    void push_session(Session &&session);
+    class NotifierClient;
+    // name of your component to refer in static config
+    static constexpr std::string_view kName = "game_storage";
+
+    NotifierComponent(const components::ComponentConfig &config,
+                      const components::ComponentContext &context);
+
+    std::shared_ptr<NotifierClient> GetStorage();
 
   private:
-    std::map<int, Session> sessions;
-    userver::engine::Mutex mutex_;
+    std::shared_ptr<NotifierClient> notifier_;
+};
+
+class NotifierComponent::NotifierClient final {
+  public:
+    NotifierClient() = default;
+    ~NotifierClient() = default;
+
+    void broadcast(const std::string &msg);
+
+    void add_notifier(const int &id,
+                      std::shared_ptr<NotifierForUser> new_notifier);
+
+    /*
+     * @brief returns shared_ptr for notifier
+     * @paramm {id} id of notifier
+     * @retval {nullptr} if notifier was not found
+     */
+    std::shared_ptr<NotifierForUser> get_notifier(const int &id);
+
+    std::vector<std::pair<int, std::string>> get_all();
+
+  private:
+    engine::SharedMutex shared_mutex_;
+    std::unordered_map<int, std::shared_ptr<NotifierForUser>> umap;
 };
