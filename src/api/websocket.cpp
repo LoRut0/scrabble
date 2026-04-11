@@ -1,10 +1,7 @@
-#include "game/ScrabbleGame.hpp"
-#include "handlers.hpp"
-#include "utfcpp/source/utf8.h"
+#include "websocket.hpp"
 #include "utils/utils.hpp"
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string_view>
 #include <userver/crypto/crypto.hpp>
 #include <userver/formats/json/serialize.hpp>

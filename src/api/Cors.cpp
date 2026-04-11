@@ -1,4 +1,4 @@
-#include "api/Cors.hpp"
+#include "Cors.hpp"
 #include <userver/server/http/http_response.hpp>
 
 using namespace userver;

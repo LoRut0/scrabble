@@ -1,3 +1,4 @@
+#pragma once
 #include <userver/server/websocket/websocket_handler.hpp>
 
 #include <userver/formats/json/value.hpp>
@@ -29,12 +30,13 @@ class WebsocketsHandler final : public server::websocket::WebsocketHandlerBase {
                 server::request::RequestContext &) const override;
 
   private:
-    /*
-     * @brief Parses message from websocket, calls functions
-     *
-     * @throws {server::handlers::ClientError} if format of msg is bad
-     */
-    void ParseMessage(server::websocket::Message &message) const;
+    void ReadLoop_(server::websocket::WebSocketConnection &chat,
+                   engine::Mutex &mutex, const int &my_id) const;
+
+    void SendLoop_(server::websocket::WebSocketConnection &chat,
+                   engine::Mutex &mutex, const int &my_id) const;
+
+    std::shared_ptr<NotifierComponent::NotifierClient> notifier_cl_;
 };
 
 } // namespace services::websocket

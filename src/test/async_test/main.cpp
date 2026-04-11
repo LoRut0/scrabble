@@ -1,3 +1,4 @@
+#include "Notifier.hpp"
 #include "websocket.hpp"
 #include <userver/clients/dns/component.hpp>
 #include <userver/testsuite/testsuite_support.hpp>
@@ -12,8 +13,8 @@ int main(int argc, char *argv[]) {
     const auto component_list =
         components::MinimalServerComponentList()
             .Append<services::websocket::WebsocketsHandler>()
-            .Append<components::TestsuiteSupport>()
-            .Append<clients::dns::Component>();
+            .Append<clients::dns::Component>()
+            .Append<NotifierComponent>();
     return utils::DaemonMain(argc, argv, component_list);
 }
 

@@ -4,14 +4,16 @@
 NotifierForUser::NotifierForUser(const std::string &UserName)
     : kUserName(UserName) {}
 
-bool NotifierForUser::empty() { return send_queue_.empty(); }
-
 void NotifierForUser::push_message(const std::string &msg) {
+    std::unique_lock<engine::Mutex> lock(mutex_);
     send_queue_.push(msg);
+    cv_.NotifyOne();
     return;
 }
 
-const std::string NotifierForUser::pop_message() {
+const std::string NotifierForUser::pop_wait() {
+    std::unique_lock<engine::Mutex> lock(mutex_);
+    (void)cv_.Wait(lock, [&] { return !send_queue_.empty(); });
     const std::string msg = send_queue_.front();
     send_queue_.pop();
     return msg;
@@ -45,9 +47,16 @@ void NotifierComponent::NotifierClient::broadcast(const std::string &msg) {
     return;
 }
 
-void NotifierComponent::NotifierClient::add_notifier(
-    const int &id, std::shared_ptr<NotifierForUser> new_notifier) {
+void NotifierComponent::NotifierClient::add_notifier(const int &id) {
     std::lock_guard<engine::SharedMutex> lock(shared_mutex_);
-    umap[id] = new_notifier;
+    umap[id] = std::make_shared<NotifierForUser>(std::to_string(id));
     return;
+}
+
+std::shared_ptr<NotifierForUser>
+NotifierComponent::NotifierClient::get_notifier(const int &id) {
+    std::shared_lock<engine::SharedMutex> lock(shared_mutex_);
+    if (umap.contains(id))
+        return umap[id];
+    return nullptr;
 }

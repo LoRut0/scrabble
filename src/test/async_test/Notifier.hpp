@@ -1,3 +1,5 @@
+#pragma once
+
 #include <map>
 #include <memory>
 #include <queue>
@@ -11,13 +13,14 @@ using namespace userver;
 class NotifierForUser {
   private:
     std::queue<std::string> send_queue_;
+    engine::Mutex mutex_;
+    engine::ConditionVariable cv_;
 
   public:
     const std::string kUserName;
 
-    const std::string pop_message();
+    const std::string pop_wait();
     void push_message(const std::string &msg);
-    bool empty();
 
     NotifierForUser(const std::string &UserName);
 };
@@ -26,7 +29,7 @@ class NotifierComponent final : public components::ComponentBase {
   public:
     class NotifierClient;
     // name of your component to refer in static config
-    static constexpr std::string_view kName = "game_storage";
+    static constexpr std::string_view kName = "notifier";
 
     NotifierComponent(const components::ComponentConfig &config,
                       const components::ComponentContext &context);
@@ -44,8 +47,7 @@ class NotifierComponent::NotifierClient final {
 
     void broadcast(const std::string &msg);
 
-    void add_notifier(const int &id,
-                      std::shared_ptr<NotifierForUser> new_notifier);
+    void add_notifier(const int &id);
 
     /*
      * @brief returns shared_ptr for notifier

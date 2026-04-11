@@ -39,12 +39,13 @@ ScrabbleGame::ScrabbleGame(
     std::function<bool(const std::u32string &word)> word_checker,
     const int &tiles_max, const int &players_num, const int &bag_size,
     const int &jokers_num, const std::array<char32_t, 128> &default_tiles)
-    : state_(tiles_max, players_num, bag_size, jokers_num, default_tiles),
+    : players_max_(players_num),
+      state_(tiles_max, bag_size, jokers_num, default_tiles),
       word_checker(word_checker) {};
 
-// TODO: players_num should migrate to GameRoom
-GameState::GameState(const int &tiles_max, const int &players_num,
-                     const int &bag_size, const int &jokers_num,
+// TODO: players_num should migrate to GameRoom or not...
+GameState::GameState(const int &tiles_max, const int &bag_size,
+                     const int &jokers_num,
                      const std::array<char32_t, 128> &default_tiles)
     : TILES_MAX_IN_HAND(tiles_max),
       board_letters(
@@ -383,6 +384,8 @@ int ScrabbleGame::set_players(std::vector<int64_t> &players) {
     this->state_.players.swap(players);
     return 0;
 }
+
+int ScrabbleGame::get_players_max() { return players_max_; }
 
 #ifdef DEBUG
 void ScrabbleGame::draw() {

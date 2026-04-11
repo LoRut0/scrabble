@@ -138,8 +138,7 @@ struct GameState {
      * @param {default_tiles} array with all possible tiles with tiles necessary
      * frequency
      */
-    GameState(const int &tiles_max, const int &players_num, const int &bag_size,
-              const int &jokers_num,
+    GameState(const int &tiles_max, const int &bag_size, const int &jokers_num,
               const std::array<char32_t, 128> &default_tiles);
 
   private:
@@ -216,6 +215,11 @@ class ScrabbleGame {
     int set_players(std::vector<int64_t> &players);
 
     /*
+     * @brief returns max players number
+     */
+    int get_players_max();
+
+    /*
      * @brief checks if player joined a game
      * @retval {int} order of player
      * @retval {0} not joined
@@ -234,6 +238,8 @@ class ScrabbleGame {
 #endif
 
   private:
+    const int players_max_;
+
     GameState state_;
     std::function<bool(const std::u32string &word)> word_checker;
 

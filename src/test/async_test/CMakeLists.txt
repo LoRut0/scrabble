@@ -18,6 +18,7 @@ find_package(
 add_executable(${PROJECT_NAME}
     main.cpp
     websocket.cpp
+    Notifier.cpp
 )
 target_link_libraries(${PROJECT_NAME}
     userver::core
