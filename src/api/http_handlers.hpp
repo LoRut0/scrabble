@@ -20,7 +20,7 @@
 
 #include <userver/logging/log.hpp>
 
-#include "game/Storage.hpp"
+#include "session/GameStorage.hpp"
 
 using namespace userver;
 
@@ -154,7 +154,8 @@ class GameHandler final : public server::handlers::HttpHandlerBase {
     JoinGameResult from_string_JoinGameResult(const std::string &str) const;
     std::string join_game_(server::http::HttpRequest &request,
                            const int &user_id) const;
-    bool check_if_already_joined_(const int &game_id, const int &user_id) const;
+    // not used bool check_if_already_joined_(const int &game_id, const int
+    // &user_id) const;
     /*
      * @brief starts game that user is hosting
      * @param {"token"} user token
@@ -192,7 +193,7 @@ class GameHandler final : public server::handlers::HttpHandlerBase {
 
     storages::sqlite::ClientPtr sqlite_client_;
 
-    std::shared_ptr<ScrabbleGame::Storage::Client> game_storage_client_;
+    std::shared_ptr<ScrabbleGame::StorageClient> game_storage_client_;
 };
 
 } // namespace services::http

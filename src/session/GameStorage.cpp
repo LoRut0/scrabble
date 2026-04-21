@@ -14,10 +14,18 @@ std::shared_ptr<StorageClient> StorageComponent::GetStorage() {
     return client_;
 }
 
-void StorageClient::new_room(const u_int64_t &game_id,
-                             std::shared_ptr<GameRoom> new_room) {
+void StorageClient::new_room(std::shared_ptr<GameRoom> new_room) {
+    u_int64_t game_id = new_room->game_id();
     const std::lock_guard<engine::SharedMutex> lock(shared_mutex_);
     umap[game_id] = new_room;
+    return;
+}
+
+bool StorageClient::delete_room(const u_int64_t &game_id, const int &user_id) {
+    if (get_game_room(game_id)->check_for_user(user_id) != 0)
+        return false;
+    umap.erase(game_id);
+    return true;
 }
 
 std::shared_ptr<GameRoom> StorageClient::get_game_room(const u_int64_t &id) {

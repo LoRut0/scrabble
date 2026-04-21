@@ -1,7 +1,5 @@
 #pragma once
 
-#include <initializer_list>
-#include <unordered_map>
 #include <userver/engine/condition_variable.hpp>
 #include <userver/formats/json/value.hpp>
 #include <userver/formats/serialize/to.hpp>
@@ -83,6 +81,8 @@ class Randomizer {
 
 struct GameState {
   public:
+    friend class ViewBuilder;
+
     // max num of tiles in player hand
     const unsigned long TILES_MAX_IN_HAND;
 

@@ -1,5 +1,4 @@
-#include "game/ScrabbleGame.hpp"
-#include "handlers.hpp"
+#include "http_handlers.hpp"
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -488,9 +487,7 @@ GameHandler::GameHandler(const components::ComponentConfig &config,
       sqlite_client_(
           context.FindComponent<components::SQLite>("sqlitedb").GetClient()),
       game_storage_client_(
-          context
-              .FindComponent<ScrabbleGame::Storage::StorageComponent>(
-                  "game_storage")
+          context.FindComponent<ScrabbleGame::StorageComponent>("game_storage")
               .GetStorage()) {};
 
 std::string GameHandler::create_game_(server::http::HttpRequest &request,
@@ -500,6 +497,13 @@ std::string GameHandler::create_game_(server::http::HttpRequest &request,
         sqlite_client_->Execute(storages::sqlite::OperationType::kReadWrite,
                                 SqlInsertNewGame.data(), user_id);
     const int new_game_id = std::move(result).AsSingleField<int>();
+
+    // TODO: game settings
+
+    ScrabbleGame::ScrabbleGame game([](const std::u32string &) { return 1; });
+    auto game_room =
+        std::make_shared<ScrabbleGame::GameRoom>(new_game_id, std::move(game));
+    game_storage_client_->new_room(game_room);
 
     request.SetResponseStatus(server::http::HttpStatus::OK);
     return std::to_string(new_game_id);
@@ -527,21 +531,21 @@ inline constexpr std::string_view SqlCheckIfUserAlreadyJoined = R"~(
     WHERE game_id = $1 AND user_id = $2
 )~";
 
-/*
- * @brief checks if user has already joined the game
- * @retval {0} not joined
- * @retval {1} joined
- */
-bool GameHandler::check_if_already_joined_(const int &game_id,
-                                           const int &user_id) const {
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(
-        userver::v2_16_rc::storages::sqlite::OperationType::kReadWrite,
-        SqlCheckIfUserAlreadyJoined.data(), game_id, user_id);
-    std::optional<int> field = std::move(result).AsOptionalSingleField<int>();
-    if (!field)
-        return 0;
-    return 1;
-}
+// /*
+//  * @brief checks if user has already joined the game
+//  * @retval {0} not joined
+//  * @retval {1} joined
+//  */
+// bool GameHandler::check_if_already_joined_(const int &game_id,
+//                                            const int &user_id) const {
+//     storages::sqlite::ResultSet result = sqlite_client_->Execute(
+//         userver::v2_16_rc::storages::sqlite::OperationType::kReadWrite,
+//         SqlCheckIfUserAlreadyJoined.data(), game_id, user_id);
+//     std::optional<int> field =
+//     std::move(result).AsOptionalSingleField<int>(); if (!field)
+//         return 0;
+//     return 1;
+// }
 
 std::string GameHandler::join_game_(server::http::HttpRequest &request,
                                     const int &user_id) const {
@@ -552,7 +556,9 @@ std::string GameHandler::join_game_(server::http::HttpRequest &request,
         userver::formats::json::FromString(request.RequestBody());
     const int game_id = json["game_id"].As<int>();
 
-    if (check_if_already_joined_(game_id, user_id)) {
+    auto game = game_storage_client_->get_game_room(game_id);
+
+    if (game->check_for_user(user_id) != -1) {
         request.SetResponseStatus(server::http::HttpStatus::OK);
         return std::to_string(game_id);
     }
@@ -561,9 +567,11 @@ std::string GameHandler::join_game_(server::http::HttpRequest &request,
         userver::v2_16_rc::storages::sqlite::OperationType::kReadWrite,
         SqlInsertNewUserInGame.data(), game_id, user_id);
     // TODO: make check for max players, make all other games of player end
+
+    auto session = std::make_shared<ScrabbleGame::PlayerSession>();
+    game->attach_session(user_id, session);
+
     const JoinGameResult join_game_result = JoinGameResult::joined;
-    // const JoinGameResult join_game_result =
-    // from_string_JoinGameResult(std::move(result).AsSingleField<std::string>());
 
     switch (join_game_result) {
     case JoinGameResult::joined:
@@ -594,19 +602,16 @@ std::string GameHandler::start_game_(server::http::HttpRequest &request,
         userver::formats::json::FromString(request.RequestBody());
     const int game_id = json["game_id"].As<int>();
 
-    // TODO: check if user is host
+    std::shared_ptr<ScrabbleGame::GameRoom> game =
+        game_storage_client_->get_game_room(game_id);
 
-    // take current game
-    // post it to redis_client_
+    game->start();
+
+    // TODO: check if user is host
     //
     // TODO: make it ongoing in sql
     //
     // return ok if all is good
-
-    std::shared_ptr<ScrabbleGame::ScrabbleGame> game_ptr =
-        std::make_shared<ScrabbleGame::ScrabbleGame>(
-            [](const std::u32string &) { return 1; });
-    game_storage_client_->add_game(game_id, game_ptr);
 
     request.SetResponseStatus(server::http::HttpStatus::OK);
     return std::to_string(game_id);
@@ -627,8 +632,14 @@ std::string GameHandler::end_game_(server::http::HttpRequest &request,
 
     if (result.rows_affected == 0) {
         request.SetResponseStatus(server::http::HttpStatus::kBadRequest);
-        return {};
+        return "User is not host";
     }
+
+    if (!game_storage_client_->delete_room(game_id, user_id)) {
+        request.SetResponseStatus(userver::v2_16_rc::http::kBadRequest);
+        return "User is not host";
+    }
+
     request.SetResponseStatus(server::http::HttpStatus::OK);
     return std::to_string(game_id);
 }
@@ -667,6 +678,7 @@ std::vector<GameHandler::GameInfo> GameHandler::list_games_helper_() const {
 }
 
 std::string GameHandler::list_games_(server::http::HttpRequest &request) const {
+    // TODO: move this function from sql to game_storage_client_
     std::vector<GameInfo> list_games_info = list_games_helper_();
     formats::json::ValueBuilder json_vb;
     json_vb["game_info_list"].Resize(list_games_info.size());

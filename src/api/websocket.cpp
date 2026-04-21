@@ -4,6 +4,8 @@
 #include <optional>
 #include <string_view>
 #include <userver/crypto/crypto.hpp>
+#include <userver/engine/async.hpp>
+#include <userver/engine/sleep.hpp>
 #include <userver/formats/json/serialize.hpp>
 #include <userver/formats/json/value_builder.hpp>
 #include <userver/logging/log.hpp>
@@ -54,28 +56,6 @@ inline constexpr std::string_view SqlGetAllPlayers = R"~(
 
 namespace services::websocket {
 
-namespace Actions {
-inline PlayerAction from_string(std::string str) {
-    if (str == "start") {
-        return PlayerAction::start;
-    } else if (str == "place") {
-        return PlayerAction::place;
-    } else if (str == "change") {
-        return PlayerAction::change;
-    } else if (str == "pass") {
-        return PlayerAction::pass;
-    } else if (str == "submit") {
-        return PlayerAction::submit;
-    } else if (str == "end") {
-        return PlayerAction::end;
-    } else if (str == "state") {
-        return PlayerAction::state;
-    }
-    throw server::handlers::ClientError(
-        server::handlers::ExternalBody{"Wrong Player-req.action"});
-}
-}; // namespace Actions
-
 WebsocketsHandler::WebsocketsHandler(
     const components::ComponentConfig &config,
     const components::ComponentContext &context)
@@ -83,23 +63,91 @@ WebsocketsHandler::WebsocketsHandler(
       sqlite_client_(
           context.FindComponent<components::SQLite>("sqlitedb").GetClient()),
       game_storage_client_(
-          context
-              .FindComponent<ScrabbleGame::Storage::StorageComponent>(
-                  "game_storage")
+          context.FindComponent<ScrabbleGame::StorageComponent>("game_storage")
               .GetStorage()) {};
 
 void WebsocketsHandler::Handle(server::websocket::WebSocketConnection &chat,
                                server::request::RequestContext &) const {
-    server::websocket::Message message;
-    while (!engine::current_task::ShouldCancel()) {
-        chat.Recv(message); // throws on closed/dropped connection
-        if (message.close_status)
-            break; // explicit close if any
-        ParseMessage(message);
-        chat.Send(message); // throws on closed/dropped connection
+    const auto [game_id, user_id] = init_user_id_(chat);
+    std::shared_ptr<ScrabbleGame::GameRoom> game =
+        game_storage_client_->get_game_room(game_id);
+    LOG_DEBUG() << "GameRoom with id = " << game->game_id() << " was received";
+    engine::Mutex mutex;
+    auto send_loop =
+        engine::AsyncNoSpan([&chat, &mutex, &game, &user_id, this] {
+            send_loop_(chat, mutex, game, user_id);
+        });
+    read_loop_(chat, mutex, game, user_id);
+
+    return;
+}
+
+std::pair<u_int64_t, int> WebsocketsHandler::init_user_id_(
+    server::websocket::WebSocketConnection &chat) const {
+    server::websocket::Message msg;
+    chat.Recv(msg);
+    const std::string token =
+        formats::json::FromString(msg.data)["token"].As<std::string>();
+    const int user_id = define_user_id_from_token_(token);
+    const u_int64_t game_id =
+        formats::json::FromString(msg.data)["game_id"].As<u_int64_t>();
+    std::shared_ptr<ScrabbleGame::GameRoom> game =
+        game_storage_client_->get_game_room(game_id);
+    if (!game) {
+        chat.Close(
+            userver::v2_16_rc::server::websocket::CloseStatus::kBadMessageData);
+        throw server::handlers::ClientError(
+            server::handlers::ExternalBody{"Game doesn't exist"});
     }
-    if (message.close_status)
-        chat.Close(*message.close_status);
+    if (game->check_for_user(user_id) == -1) {
+        chat.Close(
+            userver::v2_16_rc::server::websocket::CloseStatus::kBadMessageData);
+        throw server::handlers::ClientError(
+            server::handlers::ExternalBody{"User has not joined in game"});
+    }
+    return {game_id, user_id};
+}
+
+void WebsocketsHandler::send_loop_(server::websocket::WebSocketConnection &chat,
+                                   engine::Mutex &mutex,
+                                   std::shared_ptr<ScrabbleGame::GameRoom> game,
+                                   const int &user_id) const {
+    LOG_DEBUG() << "Started asyncrous send loop";
+    while (true) {
+        std::string msg_to_user = game->wait_for_message(user_id);
+        server::websocket::Message msg;
+        msg.data = std::move(msg_to_user);
+        std::unique_lock<engine::Mutex> lock(mutex);
+        chat.Send(msg);
+        // TODO: may be check for some atomic bool to define if we must continue
+    }
+    return;
+}
+void WebsocketsHandler::read_loop_(server::websocket::WebSocketConnection &chat,
+                                   engine::Mutex &mutex,
+                                   std::shared_ptr<ScrabbleGame::GameRoom> game,
+                                   const int &user_id) const {
+    server::websocket::Message msg;
+    while (true) {
+        int res;
+        {
+            std::unique_lock<engine::Mutex> lock(mutex);
+            res = chat.TryRecv(msg);
+        }
+        if (!res) {
+            engine::SleepFor(std::chrono::milliseconds(100));
+            continue;
+        }
+        // TODO: rework this step with atomic bool
+        if (msg.close_status) {
+            chat.Close(*msg.close_status);
+            return;
+        }
+        LOG_TRACE() << "Message received " << msg.data;
+        // TODO: not send message but receive message
+        game->send_message(user_id, msg.data);
+    }
+    return;
 }
 
 int WebsocketsHandler::define_user_id_from_token_(
@@ -115,119 +163,75 @@ int WebsocketsHandler::define_user_id_from_token_(
     return user_id.value();
 }
 
-void WebsocketsHandler::ParseMessage(
-    server::websocket::Message &message) const {
-    if (!message.is_text) {
-        throw server::handlers::ClientError(
-            server::handlers::ExternalBody{"No json in request"});
-    }
-    formats::json::Value json_msg{
-        formats::json::FromString(std::string_view(message.data))};
-    const int user_id =
-        define_user_id_from_token_(json_msg["token"].As<std::string>());
-
-    const std::string action_str = json_msg["action"].As<std::string>();
-    const Actions::PlayerAction action = Actions::from_string(action_str);
-
-    switch (action) {
-    case Actions::PlayerAction::start: {
-        action_start(message, json_msg, user_id);
-        break;
-    }
-    case Actions::PlayerAction::change: {
-        action_change(message, json_msg, user_id);
-        break;
-    }
-    case Actions::PlayerAction::end: {
-        action_end(message, json_msg, user_id);
-        break;
-    }
-    case Actions::PlayerAction::pass: {
-        action_pass(message, json_msg, user_id);
-        break;
-    }
-    case Actions::PlayerAction::submit: {
-        action_submit(message, json_msg, user_id);
-        break;
-    }
-    case Actions::PlayerAction::place: {
-        action_place(message, json_msg, user_id);
-        break;
-    }
-    case Actions::PlayerAction::state: {
-        int game_id = json_msg["game_id"].As<int>();
-        current_game_state_for_user_(message, user_id, game_id);
-        break;
-    }
-
-        // TODO: more_cases
-    }
-}
-
 void WebsocketsHandler::current_game_state_for_user_(
     server::websocket::Message &message, const int &user_id,
     const int &game_id) const {
     LOG_DEBUG() << "current_game_state";
     formats::json::ValueBuilder json_vb;
-    auto game = game_storage_client_->get_game(game_id);
+    auto game = game_storage_client_->get_game_room(game_id);
     if (!game) {
         LOG_DEBUG() << "No game pointer";
         return;
     }
-    int player_index = game->check_if_player_joined(user_id);
+    int player_index = game->check_for_user(user_id);
     if (!player_index) {
         message.data = R"({"error":404, "comment":"User not joined"})";
         return;
     }
-    auto game_state = game->get_game_state();
-
-    json_vb = game_state;
-
-    for (size_t i = 0; i < game_state.playersState[player_index].hand.size();
-         ++i) {
-        std::string tile;
-
-        tile = Char32ToUtf8(game_state.playersState[player_index].hand[i]);
-
-        json_vb["tiles"][i] = tile;
-    }
-
-    json_vb["score"] = game_state.playersState[player_index].score;
-
-    message.data = formats::json::ToStableString(json_vb.ExtractValue());
     return;
+
+    // TODO: game state for user exclusive
+
+    // auto game_state = game->get_game_state();
+    //
+    // json_vb = game_state;
+    //
+    // for (size_t i = 0; i < game_state.playersState[player_index].hand.size();
+    //      ++i) {
+    //     std::string tile;
+    //
+    //     tile = Char32ToUtf8(game_state.playersState[player_index].hand[i]);
+    //
+    //     json_vb["tiles"][i] = tile;
+    // }
+    //
+    // json_vb["score"] = game_state.playersState[player_index].score;
+    //
+    // message.data = formats::json::ToStableString(json_vb.ExtractValue());
+    // return;
 }
 
-void WebsocketsHandler::action_start(server::websocket::Message &message,
-                                     const formats::json::Value &json_msg,
-                                     const int &user_id) const {
-    storages::sqlite::ResultSet result = sqlite_client_->Execute(
-        userver::v2_16_rc::storages::sqlite::OperationType::kReadOnly,
-        SqlFindGameByHost.data(), user_id);
-    std::optional<int> game_id = std::move(result).AsOptionalSingleField<int>();
-    // TODO: all games of player must end, if he is not host
-    if (!game_id) {
-        message.close_status = server::websocket::CloseStatus::kBadMessageData;
-        message.data = "Player is not host";
-        return;
-    }
-    result = sqlite_client_->Execute(
-        userver::v2_16_rc::storages::sqlite::OperationType::kReadOnly,
-        SqlGetAllPlayers.data(), game_id);
-    std::vector<int64_t> all_players = std::move(result).AsVector<int64_t>();
-
-    std::shared_ptr<ScrabbleGame::ScrabbleGame> game =
-        game_storage_client_->get_game(*game_id);
-    if (!game) {
-        LOG_DEBUG() << "No game pointer";
-        return;
-    }
-    game->set_players(all_players);
-    game->start();
-
-    current_game_state_for_user_(message, user_id, *game_id);
-    return;
-}
+// void WebsocketsHandler::action_start(server::websocket::Message &message,
+//                                      const formats::json::Value &json_msg,
+//                                      const int &user_id) const {
+//     storages::sqlite::ResultSet result = sqlite_client_->Execute(
+//         userver::v2_16_rc::storages::sqlite::OperationType::kReadOnly,
+//         SqlFindGameByHost.data(), user_id);
+//     std::optional<int> game_id =
+//     std::move(result).AsOptionalSingleField<int>();
+//     // TODO: all games of player must end, if he is not host
+//     if (!game_id) {
+//         message.close_status =
+//         server::websocket::CloseStatus::kBadMessageData; message.data =
+//         "Player is not host"; return;
+//     }
+//     result = sqlite_client_->Execute(
+//         userver::v2_16_rc::storages::sqlite::OperationType::kReadOnly,
+//         SqlGetAllPlayers.data(), game_id);
+//     std::vector<int64_t> all_players = std::move(result).AsVector<int64_t>();
+//
+//     std::shared_ptr<ScrabbleGame::ScrabbleGame> game =
+//         game_storage_client_->get_game(*game_id);
+//     if (!game) {
+//         LOG_DEBUG() << "No game pointer";
+//         return;
+//     }
+//     game->set_players(all_players);
+//     game->start();
+//
+//     current_game_state_for_user_(message, user_id, *game_id);
+//     return;
+// }
 
 inline constexpr std::string_view SqlCheckIfUserAlreadyJoined = R"~(
     SELECT 1 FROM game_users
@@ -243,78 +247,6 @@ bool WebsocketsHandler::check_if_user_joined_(const int &game_id,
     if (!field)
         return 0;
     return 1;
-}
-
-void WebsocketsHandler::action_place(server::websocket::Message &message,
-                                     const formats::json::Value &json_msg,
-                                     const int &user_id) const {
-    int game_id = json_msg["game_id"].As<int>();
-    auto game = game_storage_client_->get_game(game_id);
-    if (!game) {
-        message.data = std::string{"game not exists"};
-        return;
-    }
-    if (!(game->check_if_player_joined(user_id))) {
-        message.data = std::string{"player not joined"};
-        return;
-    }
-    std::vector<std::vector<int>> coordinates =
-        json_msg["coordinates"].As<std::vector<std::vector<int>>>();
-    std::string letters = json_msg["letters"].As<std::string>();
-    std::vector<char32_t> tiles = utf8str_to_utf32vec_(letters);
-    int result = game->TryPlaceTiles(coordinates, tiles);
-    if (result == -1) {
-        message.data = R"(
-            {"score": -1}
-        )";
-        return;
-    }
-    formats::json::ValueBuilder json_vb;
-    json_vb["score"] = result;
-    message.data = formats::json::ToStableString(json_vb.ExtractValue());
-    return;
-}
-
-void WebsocketsHandler::action_submit(server::websocket::Message &message,
-                                      const formats::json::Value &json_msg,
-                                      const int &user_id) const {
-    int game_id = json_msg["game_id"].As<int>();
-    auto game = game_storage_client_->get_game(game_id);
-    if (!game) {
-        message.data = std::string{"game not exists"};
-        return;
-    }
-    if (!(game->check_if_player_joined(user_id))) {
-        message.data = std::string{"player not joined"};
-        return;
-    }
-    int result = game->SubmitWord();
-    if (result == -1) {
-        message.data = R"(
-            {"score": -1}
-        )";
-        return;
-    }
-    formats::json::ValueBuilder json_vb;
-    json_vb["score"] = result;
-    message.data = formats::json::ToStableString(json_vb.ExtractValue());
-    return;
-}
-
-void WebsocketsHandler::action_change(server::websocket::Message &message,
-                                      const formats::json::Value &json_msg,
-                                      const int &user_id) const {
-    return;
-}
-void WebsocketsHandler::action_end(server::websocket::Message &message,
-                                   const formats::json::Value &json_msg,
-                                   const int &user_id) const {
-    return;
-}
-void WebsocketsHandler::action_pass(server::websocket::Message &message,
-                                    const formats::json::Value &json_msg,
-                                    const int &user_id) const {
-    return;
 }
 
 void WebsocketsHandler::DefaultInit(formats::json::ValueBuilder &json_for_redis,

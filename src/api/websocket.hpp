@@ -1,5 +1,5 @@
 #pragma once
-#include "game/Storage.hpp"
+#include "session/GameStorage.hpp"
 #include <userver/server/websocket/websocket_handler.hpp>
 #include <userver/storages/sqlite/client.hpp>
 #include <userver/storages/sqlite/component.hpp>
@@ -7,27 +7,7 @@
 
 namespace services::websocket {
 
-namespace Actions {
-
-enum class PlayerAction {
-    // start a game
-    start,
-    // try to place tiles on board
-    place,
-    // change tiles in hand
-    change,
-    // pass the move
-    pass,
-    // try to submit tiles placed on board
-    submit,
-    // end a game
-    end,
-    // try to receive cur game_state in json
-    state
-};
-
-inline PlayerAction from_string(std::string str);
-}; // namespace Actions
+using namespace userver;
 
 class WebsocketsHandler final : public server::websocket::WebsocketHandlerBase {
   public:
@@ -44,6 +24,15 @@ class WebsocketsHandler final : public server::websocket::WebsocketHandlerBase {
                 server::request::RequestContext &) const override;
 
   private:
+    void send_loop_(server::websocket::WebSocketConnection &chat,
+                    engine::Mutex &mutex,
+                    std::shared_ptr<ScrabbleGame::GameRoom> game,
+                    const int &user_id) const;
+    void read_loop_(server::websocket::WebSocketConnection &chat,
+                    engine::Mutex &mutex,
+                    std::shared_ptr<ScrabbleGame::GameRoom> game,
+                    const int &user_id) const;
+
     bool check_if_user_joined_(const int &game_id, const int &user_id) const;
     /*
      * @returns all info for frontend for current user
@@ -53,35 +42,24 @@ class WebsocketsHandler final : public server::websocket::WebsocketHandlerBase {
     void current_game_state_for_user_(server::websocket::Message &message,
                                       const int &user_id,
                                       const int &game_id) const;
-    /*
-     * @brief Parses message from websocket, calls functions
-     *
-     * @throws {server::handlers::ClientError} if format of msg is bad
-     */
-    void ParseMessage(server::websocket::Message &message) const;
-    void action_place(server::websocket::Message &message,
-                      const formats::json::Value &json_msg,
-                      const int &user_id) const;
-    void action_start(server::websocket::Message &message,
-                      const formats::json::Value &json_msg,
-                      const int &user_id) const;
-    void action_change(server::websocket::Message &message,
-                       const formats::json::Value &json_msg,
-                       const int &user_id) const;
-    void action_end(server::websocket::Message &message,
-                    const formats::json::Value &json_msg,
-                    const int &user_id) const;
-    void action_pass(server::websocket::Message &message,
-                     const formats::json::Value &json_msg,
-                     const int &user_id) const;
-    void action_submit(server::websocket::Message &message,
-                       const formats::json::Value &json_msg,
-                       const int &user_id) const;
 
     void DefaultInit(formats::json::ValueBuilder &json_for_redis,
                      int64_t gameID) const;
 
+    /*
+     * @brief asks database about owner of token
+     * @returns user_id {int} or throws {ClientError}
+     */
     int define_user_id_from_token_(const std::string &token) const;
+
+    /*
+     * @brief Receives first message which describes connection
+     * @receives "token" of user
+     * @returns {game_id, user_id}
+     * @throws ClientError
+     */
+    std::pair<u_int64_t, int>
+    init_user_id_(server::websocket::WebSocketConnection &chat) const;
 
     template <typename T>
     std::vector<T> ToVector(const formats::json::Value &json) const;
@@ -94,7 +72,7 @@ class WebsocketsHandler final : public server::websocket::WebsocketHandlerBase {
 
     storages::sqlite::ClientPtr sqlite_client_;
 
-    std::shared_ptr<ScrabbleGame::Storage::Client> game_storage_client_;
+    std::shared_ptr<ScrabbleGame::StorageClient> game_storage_client_;
 };
 
 } // namespace services::websocket

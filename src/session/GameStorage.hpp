@@ -20,7 +20,14 @@ class StorageClient final {
     StorageClient() = default;
     ~StorageClient() = default;
 
-    void new_room(const u_int64_t &game_id, std::shared_ptr<GameRoom> new_room);
+    void new_room(std::shared_ptr<GameRoom> new_room);
+
+    /*
+     * @brief tries to delete game from storage
+     * @notes checks if user is host
+     * @returns {true} if success
+     */
+    bool delete_room(const u_int64_t &game_id, const int &user_id);
 
     /*
      * @brief returns shared_ptr for GameRoom
