@@ -1,0 +1,20 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: scryablya:dev
+    container_name: scryablya-dev
+    ports:
+      - 8080:8080
+    volumes:
+      - ${DIR}:/workspace
+      - ~/.config/nvim:/home/ubuntu/.config/nvim
+    user: "${HOST_UID}:${HOST_GID}"
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined

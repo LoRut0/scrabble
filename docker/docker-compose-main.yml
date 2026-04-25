@@ -1,0 +1,20 @@
+services:
+  scryablya:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: scryablya:latest
+    container_name: scryablya-app
+    ports:
+      - 8080:8080
+    working_dir: /workspace
+    volumes:
+      - ${DIR}:/workspace
+    # network_mode: "ip6net"
+    user: "${HOST_UID}:${HOST_GID}"
+    stdin_open: true
+    tty: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
