@@ -1,6 +1,7 @@
 #include "api/Cors.hpp"
-#include "api/handlers.hpp"
-#include "game/ScrabbleGame.hpp"
+#include "api/http_handlers.hpp"
+#include "api/websocket.hpp"
+#include "session/GameStorage.hpp"
 #include <userver/clients/dns/component.hpp>
 #include <userver/testsuite/testsuite_support.hpp>
 #include <userver/utils/daemon_run.hpp>
@@ -18,7 +19,7 @@ int main(int argc, char *argv[]) {
             .Append<services::http::LoginHandler>()
             .Append<services::http::RegistrationHandler>()
             .Append<services::cors::CorsHandler>()
-            .Append<ScrabbleGame::Storage::StorageComponent>()
+            .Append<ScrabbleGame::StorageComponent>()
             .Append<components::SQLite>("sqlitedb")
             .Append<components::TestsuiteSupport>()
             .Append<clients::dns::Component>();

@@ -24,10 +24,16 @@ class WebsocketsHandler final : public server::websocket::WebsocketHandlerBase {
                 server::request::RequestContext &) const override;
 
   private:
+    /*
+     * @info sends msg with game_info to user
+     */
     void send_loop_(server::websocket::WebSocketConnection &chat,
                     engine::Mutex &mutex,
                     std::shared_ptr<ScrabbleGame::GameRoom> game,
                     const int &user_id) const;
+    /*
+     * @info waits for user input msg with 100ms sleep
+     */
     void read_loop_(server::websocket::WebSocketConnection &chat,
                     engine::Mutex &mutex,
                     std::shared_ptr<ScrabbleGame::GameRoom> game,
@@ -42,9 +48,6 @@ class WebsocketsHandler final : public server::websocket::WebsocketHandlerBase {
     void current_game_state_for_user_(server::websocket::Message &message,
                                       const int &user_id,
                                       const int &game_id) const;
-
-    void DefaultInit(formats::json::ValueBuilder &json_for_redis,
-                     int64_t gameID) const;
 
     /*
      * @brief asks database about owner of token

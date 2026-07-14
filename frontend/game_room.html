@@ -2,90 +2,73 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Игра | Scrabble</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="game-body">
 
 <div class="top-bar">
-    <a href="profile.html">loruto</a>
+    <a href="game_list.html">← К играм</a>
+    <a id="userLink" href="profile.html"></a>
 </div>
 
 <div class="game-container">
 
-    <!-- История -->
+    <!-- ЛЕВАЯ ПАНЕЛЬ — журнал событий -->
     <div class="history-panel">
-        <h2>История ходов</h2>
-        <div class="history-list">
-            <p>loruto: КОТИК (+7)</p>
-            <p>PlayerTwo: ДОМ (+5)</p>
-        </div>
+        <h2>Журнал</h2>
+        <div id="historyList" class="history-list"></div>
     </div>
 
-    <!-- Поле -->
+    <!-- ЦЕНТР — поле для игры -->
     <div class="board-panel">
-        <h2>Поле</h2>
+        <h2>Поле <span id="turnBanner" class="turn-banner"></span></h2>
+
+        <!-- Лобби: показывается пока игра не началась -->
+        <div id="lobbyBox" class="lobby-box">
+            <p id="lobbyMsg">Подключение…</p>
+            <button id="btnStart" class="primary hidden">Начать игру</button>
+        </div>
+
         <div id="gameBoard" class="board"></div>
 
-        <div class="letters-panel">
-            <div class="letter-tile">К</div>
-            <div class="letter-tile">О</div>
-            <div class="letter-tile">Т</div>
-            <div class="letter-tile">А</div>
-            <div class="letter-tile">Р</div>
-            <div class="letter-tile">М</div>
-            <div class="letter-tile">С</div>
+        <div class="letters-panel" id="lettersPanel">
+            <!-- буквы игрока -->
         </div>
+        <p class="hand-hint" id="handHint"></p>
     </div>
 
-    <!-- Игроки -->
+    <!-- ПРАВАЯ ПАНЕЛЬ — игроки и действия -->
     <div class="players-panel">
-        <div class="players-list">
-            <div class="player-entry">loruto — 7</div>
-            <div class="player-entry">PlayerTwo — 5</div>
+
+        <div id="playersList" class="players-list">
+            <!-- Игроки динамически -->
         </div>
 
         <div class="tiles-left">
-            Осталось фишек: <b>72</b>
+            Осталось фишек: <span id="tilesLeft">—</span>
+        </div>
+        <div class="tiles-left">
+            Очки за текущий ход: <span id="pendingScore">—</span>
         </div>
 
         <div class="action-buttons">
-            <button class="action-btn">Пас</button>
-            <button class="action-btn">Поменять</button>
-            <button class="action-btn">Отправить</button>
+            <button id="btnSubmit" class="action-btn" disabled>Отправить слово</button>
+            <button id="btnRecall" class="action-btn" disabled>Сбросить ход</button>
+            <button id="btnPass" class="action-btn" disabled>Пас</button>
+            <button id="btnSwap" class="action-btn" disabled>Поменять фишки</button>
         </div>
     </div>
 
 </div>
 
-<script>
-/* рисуем фейковое поле 15x15 */
-const board = document.getElementById("gameBoard");
-board.style.display = "grid";
-board.style.gridTemplateColumns = "repeat(15, 1fr)";
-board.style.gridTemplateRows = "repeat(15, 1fr)";
+<div id="connStatus" class="conn-status">…</div>
+<div id="toast" class="toast hidden"></div>
 
-const letters = {
-    111: "К",
-    112: "О",
-    113: "Т",
-    114: "И",
-    115: "К",
-    97:  "Д",
-    127: "М",
-};
-
-for (let i = 0; i < 225; i++) {
-    const cell = document.createElement("div");
-    cell.style.border = "1px solid black";
-    cell.style.display = "flex";
-    cell.style.alignItems = "center";
-    cell.style.justifyContent = "center";
-    cell.style.fontSize = "18px";
-    cell.textContent = letters[i] || "";
-    board.appendChild(cell);
-}
-</script>
-
+<script src="js/user_info.js"></script>
+<script>updateUserInfo();</script>
+<script src="js/api.js"></script>
+<script src="js/game_room.js"></script>
 </body>
 </html>

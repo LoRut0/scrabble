@@ -370,6 +370,19 @@ inline constexpr std::string_view SqlDeleteGame = R"~(
         WHERE id = $1
 )~";
 /*
+ * @brief finds existing game hosted by user (if any)
+ * @param {host_user_id} user id
+ * @notes plain SELECT on purpose: a write (RETURNING) query matching
+ *        0 rows was observed to never release the write connection,
+ *        hanging every subsequent kReadWrite query forever
+ * @retval {id} of the hosted game, if any
+ */
+inline constexpr std::string_view SqlSelectGameByHost = R"~(
+    SELECT id
+    FROM games
+        WHERE host_user_id = $1
+)~";
+/*
  * @brief deletes game if user is host
  * @param {id} game id
  * @param {host_user_id} user id
@@ -433,25 +446,6 @@ inline constexpr std::string_view SqlCheckHost = R"~(
     FROM games
         WHERE id = $1 AND host_user_id = $2
 )~";
-/*
- * @brief returns all players of game
- * @param {game_id}
- * @returns {user_id} all players user ids
- */
-inline constexpr std::string_view SqlReturnAllGamePlayers = R"~(
-    SELECT user_id
-    FROM (
-        SELECT host_user_id AS user_id
-        FROM games
-        WHERE id = $1
-
-        UNION
-
-        SELECT user_id
-        FROM game_users
-        WHERE game_id = $1
-    )
-)~";
 
 int GameHandler::define_user_id_from_token_(const std::string &token) const {
     const std::string jti = userver::crypto::hash::Sha256(token);
@@ -492,18 +486,42 @@ GameHandler::GameHandler(const components::ComponentConfig &config,
 
 std::string GameHandler::create_game_(server::http::HttpRequest &request,
                                       const int &user_id) const {
-    // TODO: check if current user already hosts a game and end it
+    LOG_DEBUG() << "create_game_: before select";
+    // deleting game if already exists
+    storages::sqlite::ResultSet select_result =
+        sqlite_client_->Execute(storages::sqlite::OperationType::kReadOnly,
+                                SqlSelectGameByHost.data(), user_id);
+    LOG_DEBUG() << "create_game_: after select execute";
+    std::optional<uint64_t> game_id =
+        std::move(select_result).AsOptionalSingleField<uint64_t>();
+    LOG_DEBUG() << "create_game_: after select field extract, had_game="
+                << (bool)game_id;
+    if (game_id) {
+        sqlite_client_->Execute(storages::sqlite::OperationType::kReadWrite,
+                                SqlDeleteGame.data(), *game_id);
+        game_storage_client_->delete_room(*game_id, user_id);
+    }
+    LOG_DEBUG() << "create_game_: before insert";
+
     storages::sqlite::ResultSet result =
         sqlite_client_->Execute(storages::sqlite::OperationType::kReadWrite,
                                 SqlInsertNewGame.data(), user_id);
+    LOG_DEBUG() << "create_game_: after insert execute";
     const int new_game_id = std::move(result).AsSingleField<int>();
+    LOG_DEBUG() << "create_game_: after insert field extract, new_game_id="
+                << new_game_id;
 
     // TODO: game settings
 
     ScrabbleGame::ScrabbleGame game([](const std::u32string &) { return 1; });
     auto game_room =
         std::make_shared<ScrabbleGame::GameRoom>(new_game_id, std::move(game));
+    LOG_DEBUG() << "create_game_: before attach_session";
+    game_room->attach_session(user_id,
+                              std::make_shared<ScrabbleGame::PlayerSession>());
+    LOG_DEBUG() << "create_game_: before new_room";
     game_storage_client_->new_room(game_room);
+    LOG_DEBUG() << "create_game_: done";
 
     request.SetResponseStatus(server::http::HttpStatus::OK);
     return std::to_string(new_game_id);
@@ -604,6 +622,12 @@ std::string GameHandler::start_game_(server::http::HttpRequest &request,
 
     std::shared_ptr<ScrabbleGame::GameRoom> game =
         game_storage_client_->get_game_room(game_id);
+
+    // Register the room's own membership list into the game. players_ is the
+    // single source of truth (also used by the websocket auth check), so we do
+    // not re-query it from SQL, which could diverge and leave an authenticated
+    // player absent from state_.players.
+    game->set_players();
 
     game->start();
 

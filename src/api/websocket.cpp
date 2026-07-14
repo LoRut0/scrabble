@@ -113,20 +113,37 @@ void WebsocketsHandler::send_loop_(server::websocket::WebSocketConnection &chat,
                                    std::shared_ptr<ScrabbleGame::GameRoom> game,
                                    const int &user_id) const {
     LOG_DEBUG() << "Started asyncrous send loop";
-    while (true) {
+    // Serve the connection for as long as the session is open: this covers the
+    // pre-start lobby (game not ongoing yet) as well as the running game. The
+    // loop ends when the session is closed (client disconnect or game end, both
+    // of which call close_session() -> PlayerSession::Close()).
+    while (game->session_open()) {
         std::string msg_to_user = game->wait_for_message(user_id);
+        // close_session() woke us up with nothing to send: stop instead of
+        // pushing onto a closing connection.
+        if (!game->session_open())
+            break;
         server::websocket::Message msg;
         msg.data = std::move(msg_to_user);
+        // Mark as a text frame: without this userver sends a binary frame, and
+        // browsers hand binary frames to onmessage as a Blob (not a string), so
+        // the JS JSON.parse fails / the message looks "missing". The Python
+        // test client accepts bytes, which is why tests passed but the browser
+        // never saw the payload.
+        msg.is_text = true;
         std::unique_lock<engine::Mutex> lock(mutex);
+        LOG_DEBUG() << "Sending message to user=" << user_id
+                    << " message = " << msg.data;
         chat.Send(msg);
-        // TODO: may be check for some atomic bool to define if we must continue
     }
+    LOG_DEBUG() << "send_loop_: session closed, stopping";
     return;
 }
 void WebsocketsHandler::read_loop_(server::websocket::WebSocketConnection &chat,
                                    engine::Mutex &mutex,
                                    std::shared_ptr<ScrabbleGame::GameRoom> game,
                                    const int &user_id) const {
+    LOG_DEBUG() << "read_loop_: started";
     server::websocket::Message msg;
     while (true) {
         int res;
@@ -138,14 +155,17 @@ void WebsocketsHandler::read_loop_(server::websocket::WebSocketConnection &chat,
             engine::SleepFor(std::chrono::milliseconds(100));
             continue;
         }
-        // TODO: rework this step with atomic bool
+        LOG_DEBUG() << "read_loop_: got message from user = " << user_id
+                    << ", close_status=" << (bool)msg.close_status
+                    << " data=" << msg.data;
+        // TODO: rework this step with atomic bool (I dont remember why :( )
         if (msg.close_status) {
             chat.Close(*msg.close_status);
+            game->close_session(user_id);
             return;
         }
-        LOG_TRACE() << "Message received " << msg.data;
-        // TODO: not send message but receive message
-        game->send_message(user_id, msg.data);
+        game->receive_message(user_id, msg.data);
+        LOG_DEBUG() << "read_loop_: message processed " << msg.data;
     }
     return;
 }
@@ -179,59 +199,7 @@ void WebsocketsHandler::current_game_state_for_user_(
         return;
     }
     return;
-
-    // TODO: game state for user exclusive
-
-    // auto game_state = game->get_game_state();
-    //
-    // json_vb = game_state;
-    //
-    // for (size_t i = 0; i < game_state.playersState[player_index].hand.size();
-    //      ++i) {
-    //     std::string tile;
-    //
-    //     tile = Char32ToUtf8(game_state.playersState[player_index].hand[i]);
-    //
-    //     json_vb["tiles"][i] = tile;
-    // }
-    //
-    // json_vb["score"] = game_state.playersState[player_index].score;
-    //
-    // message.data = formats::json::ToStableString(json_vb.ExtractValue());
-    // return;
 }
-
-// void WebsocketsHandler::action_start(server::websocket::Message &message,
-//                                      const formats::json::Value &json_msg,
-//                                      const int &user_id) const {
-//     storages::sqlite::ResultSet result = sqlite_client_->Execute(
-//         userver::v2_16_rc::storages::sqlite::OperationType::kReadOnly,
-//         SqlFindGameByHost.data(), user_id);
-//     std::optional<int> game_id =
-//     std::move(result).AsOptionalSingleField<int>();
-//     // TODO: all games of player must end, if he is not host
-//     if (!game_id) {
-//         message.close_status =
-//         server::websocket::CloseStatus::kBadMessageData; message.data =
-//         "Player is not host"; return;
-//     }
-//     result = sqlite_client_->Execute(
-//         userver::v2_16_rc::storages::sqlite::OperationType::kReadOnly,
-//         SqlGetAllPlayers.data(), game_id);
-//     std::vector<int64_t> all_players = std::move(result).AsVector<int64_t>();
-//
-//     std::shared_ptr<ScrabbleGame::ScrabbleGame> game =
-//         game_storage_client_->get_game(*game_id);
-//     if (!game) {
-//         LOG_DEBUG() << "No game pointer";
-//         return;
-//     }
-//     game->set_players(all_players);
-//     game->start();
-//
-//     current_game_state_for_user_(message, user_id, *game_id);
-//     return;
-// }
 
 inline constexpr std::string_view SqlCheckIfUserAlreadyJoined = R"~(
     SELECT 1 FROM game_users
@@ -247,25 +215,6 @@ bool WebsocketsHandler::check_if_user_joined_(const int &game_id,
     if (!field)
         return 0;
     return 1;
-}
-
-void WebsocketsHandler::DefaultInit(formats::json::ValueBuilder &json_for_redis,
-                                    int64_t gameID) const {
-    // json_for_redis["gameID"] = gameID;
-    // // TODO: random queue at the beginning of game
-    // json_for_redis["state"]["playerq"] = 0;
-    // json_for_redis["state"]["rollnum"] = 0;
-    //
-    // json_for_redis["state"]["dices"].Resize(5);
-    // for (int i = 0; i < 5; i++) {
-    //     json_for_redis["state"]["dices"][i] = -1;
-    // }
-    //
-    // json_for_redis["state"]["p1"]["sequences"] = DiceGame::Combinations(-1);
-    // json_for_redis["state"]["p2"]["sequences"] = DiceGame::Combinations(-1);
-    // json_for_redis["state"]["cur_sequences"] = DiceGame::Combinations(-1);
-
-    return;
 }
 
 template <typename T>

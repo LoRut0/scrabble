@@ -29,6 +29,8 @@ class StorageClient final {
      */
     bool delete_room(const u_int64_t &game_id, const int &user_id);
 
+    void remove_room(const u_int64_t &game_id);
+
     /*
      * @brief returns shared_ptr for GameRoom
      * @paramm {id} id of game

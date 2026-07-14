@@ -99,7 +99,8 @@ struct GameState {
     int score = -1;
 
     std::vector<PlayerState> playersState;
-    int current_player; // index in playersState
+    int current_player =
+        0; // index in playersState; host (players[0]) moves first
     //
     /*
      * @brief vector that holds ids of players [0] - is host
@@ -127,6 +128,8 @@ struct GameState {
      * @param {index} player index fron vector playersState
      */
     void FillHand(const int index);
+
+    void init_players(std::vector<int64_t> &&players);
 
     /*
      * @brief constructor of GameState
@@ -156,10 +159,6 @@ struct GameState {
     char32_t DrawTile_();
 };
 
-userver::formats::json::Value
-Serialize(const GameState &data,
-          userver::formats::serialize::To<userver::formats::json::Value>);
-
 class ScrabbleGame {
   public:
     /*
@@ -179,20 +178,19 @@ class ScrabbleGame {
                  const std::array<char32_t, 128> &default_tiles = defaultTiles);
 
     /*
-     * @brief Tries to place a word on board
+     * @brief Tries to place a word on board (validates a pending placement)
      *
      * @param {coordinates} vector{{x,y}, ...} where Tiles placed
      * @param {tiles} vector of letters of word
-     * words, should return true if word exists, else if not
      *
-     * @retval {state_.score} state_.score becomes 0 or more if tiles placement
-     * is correct
-     * @retval {int} returns score for Tiles if placement is correct, else -1
-     *
-     * @throws {char*} error
+     * @note on success state_.score holds the score for the pending placement;
+     *       on any failure state_.score is left at -1
+     * @retval {""} placement is valid
+     * @retval {non-empty} human-readable reason the placement was rejected
+     *         (never throws, so callers can report it directly)
      */
-    int TryPlaceTiles(std::vector<std::vector<int>> &coordinates,
-                      std::vector<char32_t> &tiles);
+    std::string TryPlaceTiles(std::vector<std::vector<int>> &&coordinates,
+                              std::vector<char32_t> &&tiles);
 
     /*
      * @brief Places tiles on board if possible
@@ -207,12 +205,14 @@ class ScrabbleGame {
      */
     GameState get_game_state();
 
+    std::vector<char32_t> get_player_hand(const int64_t id);
+
     /*
      * @brief sets players to inputted vector [0] - host user_id
      * @param {players} vector of user_id, empties while executing
      * @retval {0} OK
      */
-    int set_players(std::vector<int64_t> &players);
+    int set_players(std::vector<int64_t> players);
 
     /*
      * @brief returns max players number
@@ -222,7 +222,7 @@ class ScrabbleGame {
     /*
      * @brief checks if player joined a game
      * @retval {int} order of player
-     * @retval {0} not joined
+     * @retval {-1} not joined
      */
     int check_if_player_joined(const int64_t &user_id);
 
@@ -232,6 +232,39 @@ class ScrabbleGame {
      * @retval {0} OK
      */
     int start();
+
+    /*
+     * @brief returns score for currently placed but not yet submitted tiles
+     * @retval {-1} no valid placement pending
+     * @retval {>=0} score for pending placement
+     */
+    int get_pending_score() const;
+
+    /*
+     * @brief passes the current player's turn: clears pending tiles and
+     * advances current_player
+     */
+    void Pass();
+
+    /*
+     * @brief exchanges tiles from the given player's hand with new ones from
+     * the bag
+     * @param {user_id} id of the player whose hand is modified
+     * @param {tiles} tiles to return to the bag
+     * @retval {true} OK
+     * @retval {false} player doesn't have one of the requested tiles
+     */
+    bool Change(const int64_t user_id, std::vector<char32_t> tiles);
+
+    /*
+     * @returns index of player whose turn is now
+     */
+    int whose_move();
+
+    /*
+     * @returns id of player whose turn is now
+     */
+    int64_t whose_move_id();
 
 #ifdef DEBUG
     void draw();
@@ -244,22 +277,22 @@ class ScrabbleGame {
     std::function<bool(const std::u32string &word)> word_checker;
 
     /*
-     * @brief Checks placement of tiles inside TryPlaceTiles()
+     * @brief Checks the pending placement inside TryPlaceTiles()
      *
      * @param {word_checker(std::u32string&)} function to check existence of
      * words, should return true if word exists, else if not
      *
-     * @retval {state_.score} state_.score becomes 0 or more if tiles placement
-     * is correct
-     *
-     * @throws {char*} error
+     * @note on success state_.score is set to the placement score; on failure
+     *       state_.score is set to -1
+     * @retval {""} placement is valid
+     * @retval {non-empty} reason the placement was rejected (never throws)
      */
-    void TilesCheck_();
+    std::string TilesCheck_();
 
     // TODO: receives only horiz or vert placed tiles,
     // TODO: can return words with one letter
     /*
-     * @brief gathers all words thah were formed by placed tiles
+     * @brief gathers all words that were formed by placed tiles
      *
      * @retval {vector<u32string>} vector with all words
      *

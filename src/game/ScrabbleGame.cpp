@@ -7,6 +7,7 @@
 #include <string>
 #include <userver/components/component_base.hpp>
 #include <userver/formats/json/value_builder.hpp>
+#include <userver/logging/log.hpp>
 #include <userver/server/handlers/exceptions.hpp>
 
 namespace ScrabbleGame {
@@ -80,7 +81,7 @@ void GameState::FillBag_(const int &bag_size, const int &jokers_num,
 }
 
 void GameState::FillHand(const int index) {
-    PlayerState current_player = playersState[index];
+    PlayerState &current_player = playersState[index];
 
     while (current_player.hand.size() < TILES_MAX_IN_HAND) {
         char32_t new_tile = DrawTile_();
@@ -103,36 +104,49 @@ char32_t GameState::DrawTile_() {
     return return_tile;
 }
 
-void ScrabbleGame::TilesCheck_() {
+std::string ScrabbleGame::TilesCheck_() {
     auto &coordinates = state_.new_tiles_coordinates;
     auto &tiles = state_.new_letters;
+
+    if (coordinates.empty())
+        return "No tiles to place";
+
+    // Validate every coordinate is well-formed and inside the board before we
+    // ever index into the board, so bad client input can't cause out-of-range
+    // access (which would be UB / an abort, not a catchable error).
+    const int board_w = static_cast<int>(state_.board_letters.size());
+    for (const auto &c : coordinates) {
+        if (c.size() < 2)
+            return "Malformed coordinate";
+        const int x = c[0];
+        const int y = c[1];
+        if (x < 0 || x >= board_w || y < 0 ||
+            y >= static_cast<int>(state_.board_letters[x].size()))
+            return "Coordinates out of board";
+    }
+
     auto new_board = state_.board_letters;
 
     // TODO: to redo from here see todo in declaration
-    bool horizontal = 1;
-    bool vertical = 1;
-    std::vector<int> last_coords = coordinates[0];
+    bool horizontal = true;
+    bool vertical = true;
+    const std::vector<int> &first = coordinates[0];
     for (size_t i = 1; i < coordinates.size(); i++) {
-        const auto &tile_coords = coordinates[i];
-        if (tile_coords[0] != last_coords[0])
-            vertical = 0;
-    }
-    last_coords = coordinates[0];
-    for (size_t i = 1; i < coordinates.size(); i++) {
-        const auto &tile_coords = coordinates[i];
-        if (tile_coords[1] != last_coords[1])
-            horizontal = 0;
+        if (coordinates[i][0] != first[0])
+            vertical = false;
+        if (coordinates[i][1] != first[1])
+            horizontal = false;
     }
 
     if (!vertical && !horizontal)
-        throw "Tiles are not in line";
+        return "Tiles are not in line";
     // to here
 
     for (size_t i = 0; i < coordinates.size(); i++) {
         const auto &tile_coords = coordinates[i];
 
         if (new_board[tile_coords[0]][tile_coords[1]])
-            throw "Coordinates already occupied by another Tile";
+            return "Coordinates already occupied by another Tile";
 
         new_board[tile_coords[0]][tile_coords[1]] = tiles[i];
     }
@@ -140,15 +154,17 @@ void ScrabbleGame::TilesCheck_() {
     std::vector<std::u32string> words =
         GetNewWords_(new_board, coordinates, horizontal);
 
+    int score = 0;
     for (const auto &word : words) {
         if (!word_checker(word)) {
             state_.score = -1;
-            return;
+            return "Word does not exist";
         }
-        state_.score += calculate_score_(word);
+        score += calculate_score_(word);
     }
 
-    return;
+    state_.score = score;
+    return "";
 }
 
 int ScrabbleGame::calculate_score_(const std::u32string &word) const {
@@ -256,18 +272,18 @@ int ScrabbleGame::calculate_score_(const std::u32string &word) const {
     return score;
 }
 
-int ScrabbleGame::TryPlaceTiles(std::vector<std::vector<int>> &coordinates,
-                                std::vector<char32_t> &tiles) {
+std::string
+ScrabbleGame::TryPlaceTiles(std::vector<std::vector<int>> &&coordinates,
+                            std::vector<char32_t> &&tiles) {
     state_.score = -1;
 
     if (coordinates.size() != tiles.size())
-        throw "Vector sizes does not match";
+        return "Coordinates and tiles count mismatch";
 
     state_.new_tiles_coordinates = std::move(coordinates);
     state_.new_letters = std::move(tiles);
 
-    TilesCheck_();
-    return state_.score;
+    return TilesCheck_();
 }
 
 int ScrabbleGame::SubmitWord() {
@@ -282,7 +298,19 @@ int ScrabbleGame::SubmitWord() {
         const int &tile_y = new_tiles_coordinates[i][1];
         state_.board_letters[tile_x][tile_y] = new_tiles[i];
     }
-    return state_.score;
+
+    int score = state_.score;
+    auto &hand = state_.playersState[state_.current_player].hand;
+    for (const char32_t tile : new_tiles) {
+        auto it = std::find(hand.begin(), hand.end(), tile);
+        if (it != hand.end())
+            hand.erase(it);
+    }
+    state_.FillHand(state_.current_player);
+
+    state_.playersState[state_.current_player].score += score;
+    Pass();
+    return score;
 }
 
 std::vector<std::u32string> ScrabbleGame::GetNewWords_(
@@ -325,6 +353,17 @@ std::vector<std::u32string> ScrabbleGame::GetNewWords_(
 }
 
 GameState ScrabbleGame::get_game_state() { return state_; }
+
+std::vector<char32_t> ScrabbleGame::get_player_hand(const int64_t id) {
+    auto it = std::ranges::find(state_.players, id);
+    if (it == state_.players.end())
+        return {};
+    int idx = std::distance(state_.players.begin(), it);
+    LOG_DEBUG() << "get_player_hand: id=" << id << " idx=" << idx
+                << " players.size()=" << state_.players.size()
+                << " playersState.size()=" << state_.playersState.size();
+    return state_.playersState[idx].hand;
+}
 
 std::u32string ScrabbleGame::horizontal_check_(
     std::vector<std::vector<std::optional<char32_t>>> &new_board_letters,
@@ -376,16 +415,59 @@ int ScrabbleGame::check_if_player_joined(const int64_t &user_id) {
     auto finder =
         std::find(state_.players.begin(), state_.players.end(), user_id);
     if (finder == state_.players.end())
-        return 0;
+        return -1;
     return std::distance(state_.players.begin(), finder);
 }
 
-int ScrabbleGame::set_players(std::vector<int64_t> &players) {
-    this->state_.players.swap(players);
+int ScrabbleGame::whose_move() { return state_.current_player; }
+
+int64_t ScrabbleGame::whose_move_id() {
+    return state_.players[state_.current_player];
+}
+
+void GameState::init_players(std::vector<int64_t> &&players_) {
+    players = std::move(players_);
+    playersState.resize(players.size());
+    for (size_t i = 0; i < players.size(); ++i)
+        FillHand(i);
+}
+
+int ScrabbleGame::set_players(std::vector<int64_t> players) {
+    state_.init_players(std::move(players));
     return 0;
 }
 
 int ScrabbleGame::get_players_max() { return players_max_; }
+
+int ScrabbleGame::get_pending_score() const { return state_.score; }
+
+bool ScrabbleGame::Change(const int64_t user_id, std::vector<char32_t> tiles) {
+    int idx = check_if_player_joined(user_id);
+    if (idx == -1)
+        return false;
+
+    auto &hand = state_.playersState[idx].hand;
+
+    for (const char32_t tile : tiles) {
+        auto it = std::find(hand.begin(), hand.end(), tile);
+        if (it == hand.end())
+            return false;
+        state_.bag.push_back(*it);
+        hand.erase(it);
+    }
+
+    state_.FillHand(idx);
+    Pass();
+    return true;
+}
+
+void ScrabbleGame::Pass() {
+    state_.new_tiles_coordinates.clear();
+    state_.new_letters.clear();
+    state_.score = -1;
+    state_.current_player =
+        (state_.current_player + 1) % static_cast<int>(state_.players.size());
+}
 
 #ifdef DEBUG
 void ScrabbleGame::draw() {

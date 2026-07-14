@@ -37,37 +37,3 @@ std::shared_ptr<GameRoom> StorageClient::get_game_room(const u_int64_t &id) {
 
 } // namespace ScrabbleGame
 
-namespace ScrabbleGame {
-
-userver::formats::json::Value
-Serialize(const GameState &data,
-          userver::formats::serialize::To<userver::formats::json::Value>) {
-    formats::json::ValueBuilder json_vb;
-
-    // letters
-    for (size_t x = 0; x < data.board_letters.size(); ++x) {
-        for (size_t y = 0; y < data.board_letters[x].size(); ++y) {
-
-            std::string cell;
-
-            if (data.board_letters[x][y]) {
-                cell = Char32ToUtf8(*data.board_letters[x][y]);
-            } else {
-                cell = " "; // пустая клетка
-            }
-
-            json_vb["letters"][x][y] = cell;
-        }
-    }
-
-    // prices
-    for (size_t x = 0; x < data.board_prices.size(); ++x) {
-        for (size_t y = 0; y < data.board_prices[x].size(); ++y) {
-            json_vb["prices"][x][y] = data.board_prices[x][y];
-        }
-    }
-
-    return json_vb.ExtractValue();
-}
-
-} // namespace ScrabbleGame

@@ -11,8 +11,10 @@ void PlayerSession::send_raw_message(const std::string &msg) {
 
 const std::string PlayerSession::pop_wait() {
     std::unique_lock<engine::Mutex> lock(mutex_);
-    (void)cv_.Wait(lock, [&] { return closed_ or !send_queue_.empty(); });
-    if (closed_)
+    bool res = cv_.Wait(lock, [&] { return closed_ or !send_queue_.empty(); });
+    // Wait() can return early (task cancellation) before the predicate
+    // actually holds, so re-check instead of assuming it does.
+    if (closed_ || send_queue_.empty())
         return "";
     const std::string msg = send_queue_.front();
     send_queue_.pop();
@@ -24,6 +26,11 @@ void PlayerSession::Close() {
     closed_ = true;
     cv_.NotifyAll();
     return;
+}
+
+bool PlayerSession::closed() {
+    std::unique_lock<engine::Mutex> lock(mutex_);
+    return closed_;
 }
 
 } // namespace ScrabbleGame
