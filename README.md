@@ -1,9 +1,9 @@
 # Scrabble Online (C++ + userver)
 
-Онлайн-игра **Scrabble** с поддержкой многопользовательского режима, реализованная на:
+Онлайн-игра **Scrabble** с поддержкой многопользовательского режима, реализован с помощью:
 
 - **C++**
-- **userver framework**
+- **Userver framework**
 - **WebSocket**
 - **SQLite**
 - HTML / CSS / JavaScript (frontend)
@@ -21,7 +21,6 @@
 - Обновления в реальном времени через WebSocket
 - Полная игровая логика Scrabble на C++
 - Хранение данных в SQLite
-- Redis для хранения состояния игры и pub/sub
 - Веб-интерфейс
 
 ---
